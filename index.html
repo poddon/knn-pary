@@ -537,7 +537,10 @@ try { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/aja
 function load(k, d) { try { var v = localStorage.getItem("knn." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
 function save(k, v) { try { localStorage.setItem("knn." + k, JSON.stringify(v)); } catch (e) {} }
 
-var state = { tab: "s", fio: load("fio", ""), group: load("group", ""), sheets: load("sheets", []), favs: load("favs", []), q: "", loading: false, day: null, problem: null, lastLoaded: [] };
+var NATIVE = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.knn);
+function native(msg) { try { window.webkit.messageHandlers.knn.postMessage(msg); } catch (e) {} }
+
+var state = { auto: load("auto", true), tab: "s", fio: load("fio", ""), group: load("group", ""), sheets: load("sheets", []), favs: load("favs", []), q: "", loading: false, day: null, problem: null, lastLoaded: [] };
 
 var bySurname = {}, known = {};
 TEACHERS.forEach(function (t) {
@@ -610,8 +613,8 @@ function renderHeader() {
 }
 
 /* ---------- schedule ---------- */
-function joinLink(url, label) {
-  return '<a class="go" href="' + esc(url) + '" target="_blank" rel="noopener" data-join="1">' + (label || "Войти") + "</a>";
+function joinLink(url, label, title) {
+  return '<a class="go" href="' + esc(url) + '" target="_blank" rel="noopener" data-join="1" data-title="' + esc(title || "") + '">' + (label || "Войти") + "</a>";
 }
 
 function teacherRows(l) {
@@ -621,7 +624,7 @@ function teacherRows(l) {
     if (!cand.length) return '<div class="trow"><span class="av" style="background:var(--muted)">' + esc(initials(w)) + '</span><div class="tn">' + esc(w) + "<small>ссылки нет в списке</small></div></div>";
     return cand.map(function (t) {
       return '<div class="trow"><span class="av" style="background:' + color(t[0]) + '">' + esc(initials(t[0])) + '</span><div class="tn">' + esc(t[0]) +
-        (cand.length > 1 ? "<small>однофамилец, проверь, кто ведёт</small>" : "") + "</div>" + joinLink(t[1]) + "</div>";
+        (cand.length > 1 ? "<small>однофамилец, проверь, кто ведёт</small>" : "") + "</div>" + joinLink(t[1], "Войти", l.subject || t[0]) + "</div>";
     }).join("");
   }).join("");
 }
@@ -675,15 +678,79 @@ function renderSchedule(v) {
     h += '<article class="card lesson ' + cls + '"><div class="lt"><span class="num">' + l.num + '</span><span class="time">' + esc(l.time.replace("–", " – ")) + "</span>" +
       (st ? '<span class="badge st">' + st + "</span>" : "") + '</div><div class="subj">' + esc(l.subject || "Пара") + "</div>" + teacherRows(l) + "</article>";
   });
+  if (canCalendar()) h += '<button class="btn primary" type="button" data-act="cal">🔔 Напоминания о парах в Календарь</button>';
   h += '<div class="row2"><label class="btn" for="pdfInput">Загрузить PDF</label><button class="btn" type="button" data-act="group">Сменить группу</button></div>';
-  h += '<p class="hint">«Войти» копирует твоё ФИО и открывает конференцию. Даты и время сверяй с официальным расписанием.</p>';
+  if (NATIVE) h += '<button class="btn" type="button" data-act="auto">' + (state.auto ? "▶ Автовход на пары: включён" : "⏸ Автовход на пары: выключен") + "</button>";
+  h += '<p class="hint">' + (NATIVE ? "Перед каждой парой придёт уведомление. Нажми на него, и приложение само войдёт с твоим ФИО." : "«Войти» копирует твоё ФИО и открывает конференцию.") + " Даты и время сверяй с официальным расписанием.</p>";
   v.innerHTML = h + howto();
 }
 
+/* ---------- calendar reminders (.ics) ---------- */
+function canCalendar() { return /github\.io$/.test(location.hostname) || location.protocol === "file:"; }
+
+function icsText(s) { return String(s).replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;"); }
+function icsFold(line) {
+  var out = [], cur = "", bytes = 0;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i], b = unescape(encodeURIComponent(ch)).length;
+    if (bytes + b > 73) { out.push(cur); cur = " "; bytes = 1; }
+    cur += ch; bytes += b;
+  }
+  out.push(cur);
+  return out.join("\r\n");
+}
+function icsDate(d) { return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); }
+
+function buildIcs() {
+  var now = Date.now(), events = [], stamp = icsDate(new Date());
+  daysForGroup().forEach(function (sh) {
+    var p = sh.date.split("."); if (p.length !== 3) return;
+    var y = +p[2] < 100 ? 2000 + +p[2] : +p[2], col = Sched.find(sh, state.group);
+    col.lessons.forEach(function (l) {
+      var m = mins(l.time); if (!m) return;
+      var start = new Date(y, +p[1] - 1, +p[0], Math.floor(m[0] / 60), m[0] % 60), end = new Date(y, +p[1] - 1, +p[0], Math.floor(m[1] / 60), m[1] % 60);
+      if (end.getTime() < now) return;
+      var names = [], links = [], url = "";
+      l.teachers.forEach(function (w) {
+        var c = lookup(w);
+        if (!c.length) names.push(w);
+        c.forEach(function (t) { names.push(t[0]); links.push(t[0] + ": " + t[1]); });
+        if (c.length === 1 && !url) url = c[0][1];
+      });
+      var desc = (names.length ? "Преподаватель: " + names.join(", ") + "\n" : "") + links.join("\n") +
+        (state.fio ? "\nИмя для входа: " + state.fio : "") + "\nСверяй время с официальным расписанием.";
+      var lines = ["BEGIN:VEVENT",
+        "UID:knn-" + sh.date.replace(/\./g, "") + "-" + l.num + "-" + Sched.normGroup(state.group).replace(/[^0-9A-ZА-ЯЁ]/g, "") + "@poddon.github.io",
+        "DTSTAMP:" + stamp, "DTSTART:" + icsDate(start), "DTEND:" + icsDate(end),
+        "SUMMARY:" + icsText(l.num + " пара: " + (l.subject || "Пара")),
+        "DESCRIPTION:" + icsText(desc)];
+      if (url) lines.push("URL:" + url, "LOCATION:" + icsText(url));
+      lines.push("BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsText(l.num + " пара через 3 минуты" + (names.length ? ": " + names[0] : "")), "TRIGGER:-PT3M", "END:VALARM", "END:VEVENT");
+      events.push(lines.map(icsFold).join("\r\n"));
+    });
+  });
+  if (!events.length) return null;
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//KNN pary//RU", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:КНН пары"].join("\r\n") +
+    "\r\n" + events.join("\r\n") + "\r\nEND:VCALENDAR\r\n";
+}
+
+function addToCalendar() {
+  var ics = buildIcs();
+  if (!ics) { toast("Предстоящих пар нет. Загрузи свежий PDF с расписанием."); return; }
+  var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (ios) { location.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics); return; }
+  var url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+  var a = document.createElement("a"); a.href = url; a.download = "knn-pary.ics"; document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 4000);
+  toast("Открой скачанный файл, чтобы добавить пары в календарь");
+}
+
 function howto() {
+  if (NATIVE) return "";
   return '<details class="card howto"><summary>Как поставить на iPhone</summary><ol>' +
     "<li>Открой эту страницу в Safari.</li><li>Нажми «Поделиться» (квадрат со стрелкой вверх).</li>" +
-    "<li>Выбери «На экран „Домой“», затем «Добавить».</li><li>PDF из MAX сохрани в «Файлы» и загружай кнопкой «Загрузить PDF».</li></ol></details>";
+    "<li>Выбери «На экран „Домой“», затем «Добавить».</li><li>PDF из MAX сохрани в «Файлы» и загружай кнопкой «Загрузить PDF».</li>" +
+    "<li>После загрузки нажми «Напоминания о парах в Календарь», затем «Добавить все». За 3 минуты до пары придёт уведомление, в событии будет ссылка для входа.</li></ol></details>";
 }
 
 /* ---------- teachers ---------- */
@@ -699,7 +766,7 @@ function renderTeachers(v) {
   function card(t) {
     var w = t[0].split(" "), on = state.favs.indexOf(t[1]) >= 0;
     return '<div class="card tcard"><span class="av" style="background:' + color(t[0]) + '">' + esc(initials(t[0])) + '</span><div class="tn"><b>' + esc(w[0]) +
-      "</b><small>" + esc(w.slice(1).join(" ")) + '</small></div><button class="star" type="button" aria-label="Избранное" aria-pressed="' + on + '" data-fav="' + esc(t[1]) + '">★</button>' + joinLink(t[1]) + "</div>";
+      "</b><small>" + esc(w.slice(1).join(" ")) + '</small></div><button class="star" type="button" aria-label="Избранное" aria-pressed="' + on + '" data-fav="' + esc(t[1]) + '">★</button>' + joinLink(t[1], "Войти", t[0]) + "</div>";
   }
   var h = '<input class="search" id="q" type="search" placeholder="Поиск преподавателя" autocomplete="off" value="' + esc(state.q) + '">';
   if (!fav.length && !rest.length) h += '<div class="empty"><b>Никого не нашли</b><span>Попробуй ввести только фамилию</span></div>';
@@ -734,7 +801,7 @@ function nameSheet() {
   setTimeout(function () { var i = $("nIn"); if (i) i.focus(); }, 50);
 }
 
-function setGroup(g) { state.group = g.replace(/\s+/g, "").toUpperCase(); save("group", state.group); closeSheet(); state.tab = "s"; render(); }
+function setGroup(g) { state.group = g.replace(/\s+/g, "").toUpperCase(); save("group", state.group); closeSheet(); state.tab = "s"; render(); syncNative(); }
 
 /* ---------- PDF ---------- */
 function storeSheet(sh) {
@@ -754,10 +821,39 @@ function diagnose(text, chars, pages) {
   return b;
 }
 
-function readPdf(file) {
+function readPdf(file) { readPdfBuffer(file.arrayBuffer()); }
+
+window.knnOpenPdfBase64 = function (b64) {
+  var bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  readPdfBuffer(Promise.resolve(bytes.buffer));
+};
+
+/** The pairs of the chosen group, for the iOS app to schedule notifications and auto-join. */
+function syncNative() {
+  if (!NATIVE) return;
+  var items = [];
+  if (state.group) state.sheets.forEach(function (sh) {
+    var col = Sched.find(sh, state.group), dp = sh.date.split(".");
+    if (!col || dp.length !== 3) return;
+    var y = +dp[2]; if (y < 100) y += 2000;
+    col.lessons.forEach(function (l) {
+      var m = mins(l.time); if (!m) return;
+      var start = new Date(y, +dp[1] - 1, +dp[0], Math.floor(m[0] / 60), m[0] % 60).getTime();
+      var end = new Date(y, +dp[1] - 1, +dp[0], Math.floor(m[1] / 60), m[1] % 60).getTime();
+      var url = null, names = [];
+      l.teachers.forEach(function (w) { var c = lookup(w); if (c.length === 1) { names.push(c[0][0]); if (!url) url = c[0][1]; } else names.push(w); });
+      items.push({ start: start, end: end, title: l.num + " пара в " + l.time.split("–")[0] + (l.subject ? " · " + l.subject : ""),
+        body: names.length ? names.join(", ") + (url ? " · нажми, чтобы войти" : "") : "Открой расписание", url: url, joinTitle: l.subject || names.join(", ") });
+    });
+  });
+  native({ type: "plan", fio: state.fio, auto: state.auto, items: items });
+}
+
+function readPdfBuffer(bufPromise) {
   var chars = 0, text = "", pages = 0;
   state.loading = true; state.tab = "s"; render();
-  file.arrayBuffer().then(function (buf) {
+  bufPromise.then(function (buf) {
     return pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
   }).then(function (doc) {
     var found = [], p = Promise.resolve();
@@ -782,7 +878,7 @@ function readPdf(file) {
     state.lastLoaded = found;
     if (!found.length) { state.problem = diagnose(text, chars, pages); render(); return; }
     state.problem = null;
-    found.forEach(storeSheet); save("sheets", state.sheets);
+    found.forEach(storeSheet); save("sheets", state.sheets); syncNative();
     var mine = found.filter(function (sh) { return state.group && Sched.find(sh, state.group); })[0];
     state.day = (mine || found[0]).date;
     render();
@@ -807,15 +903,23 @@ $("sheet").addEventListener("click", function (e) {
 $("sheet").addEventListener("submit", function (e) {
   e.preventDefault();
   if (e.target.id === "gForm") { var v = $("gIn").value.trim(); if (v) setGroup(v); }
-  if (e.target.id === "nForm") { state.fio = $("nIn").value.trim().replace(/\s+/g, " "); save("fio", state.fio); closeSheet(); render(); }
+  if (e.target.id === "nForm") { state.fio = $("nIn").value.trim().replace(/\s+/g, " "); save("fio", state.fio); closeSheet(); render(); syncNative(); }
 });
 $("view").addEventListener("click", function (e) {
   if (e.target.closest("[data-act=group]")) return groupSheet();
+  if (e.target.closest("[data-act=cal]")) return addToCalendar();
   if (e.target.closest("[data-act=hide]")) { state.problem = null; return render(); }
+  if (e.target.closest("[data-act=auto]")) { state.auto = !state.auto; save("auto", state.auto); render(); syncNative(); return toast(state.auto ? "Буду заходить на пары сам" : "Автовход выключен"); }
   var dd = e.target.closest("[data-day]"); if (dd) { state.day = dd.getAttribute("data-day"); return render(); }
   var f = e.target.closest("[data-fav]");
   if (f) { var u = f.getAttribute("data-fav"), i = state.favs.indexOf(u); if (i >= 0) state.favs.splice(i, 1); else state.favs.push(u); save("favs", state.favs); render(); return; }
   var a = e.target.closest("[data-join]");
+  if (a && NATIVE) {
+    e.preventDefault();
+    if (!state.fio) { toast("Сначала введи ФИО, с ним приложение будет входить само"); nameSheet(); return; }
+    native({ type: "join", url: a.getAttribute("href"), title: a.getAttribute("data-title") || "Пара", fio: state.fio });
+    return;
+  }
   if (a) {
     if (!state.fio) { toast("Введи ФИО в шапке, чтобы оно копировалось само"); return; }
     try { navigator.clipboard.writeText(state.fio).then(function () { toast("ФИО скопировано, вставь его в поле «Имя»"); }, function () { toast("Твоё ФИО: " + state.fio); }); }
@@ -827,6 +931,8 @@ document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$
 
 if (!state.group && isSample()) state.group = "";
 render();
+syncNative();
+if (NATIVE && !state.fio) setTimeout(nameSheet, 400);
 setInterval(function () { if (state.tab === "s" && $("sheet").hidden) render(); }, 60000);
 </script>
 
