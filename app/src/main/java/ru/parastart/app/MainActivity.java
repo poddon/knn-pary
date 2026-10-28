@@ -466,30 +466,41 @@ public class MainActivity extends Activity {
         for (String[] t : teachers) known.add(t[0].split(" ")[0]);
         ArrayList<ScheduleParser.Sheet> found = new ArrayList<>();
         StringBuilder all = new StringBuilder();
+        int textChars = 0;
         GlyphStripper st = new GlyphStripper();
         for (int pg = 1; pg <= doc.getNumberOfPages(); pg++) {
           st.glyphs.clear();
           st.setStartPage(pg); st.setEndPage(pg);
           all.append(st.getText(doc)).append('\n');
-          ScheduleParser.Sheet sh = ScheduleParser.parsePage(st.glyphs, known);
+          textChars += st.glyphs.size();
+          ScheduleParser.Sheet sh = ScheduleParser.parse(st.glyphs, Borders.of(doc.getPage(pg - 1)), known);
+          if (sh.date.isEmpty()) sh.date = new java.text.SimpleDateFormat("dd.MM.yyyy", Locale.ROOT).format(new Date());
           int lessons = 0; for (ScheduleParser.Column c : sh.columns) lessons += c.lessons.size();
           if (lessons > 0) found.add(sh);
         }
         ArrayList<String> urls = extract(all.toString());
+        String why = found.isEmpty() ? diagnose(all.toString(), textChars, doc.getNumberOfPages()) : null;
         runOnUiThread(() -> {
           loading = false;
           for (int i = urls.size() - 1; i >= 0; i--) add(urls.get(i));
           for (ScheduleParser.Sheet sh : found) storeSheet(sh);
+          lastLoaded.clear(); lastLoaded.addAll(found);
           if (!found.isEmpty()) {
+            problem = null;
             saveSheets();
             Reminders.schedule(this);
             info.setText("Расписание загружено.");
+            selectedDate = found.get(0).date;
+            for (ScheduleParser.Sheet sh : found) if (!group().isEmpty() && sh.find(group()) != null) { selectedDate = sh.date; break; }
             selectTab(0);
-            if (group().isEmpty() || findSheet() == null) groupDialog();
+            boolean has = false; for (ScheduleParser.Sheet sh : found) if (sh.find(group()) != null) has = true;
+            if (group().isEmpty()) groupDialog();
+            else if (!has) Toast.makeText(this, "Твоей группы " + group() + " нет в этом PDF", Toast.LENGTH_LONG).show();
+            else Toast.makeText(this, "Расписание на " + selectedDate + " загружено", Toast.LENGTH_SHORT).show();
           } else {
-            info.setText(urls.isEmpty() ? "В этом PDF не нашлось расписания по группам." : "Расписания по группам нет, но найдено ссылок: " + urls.size() + ".");
-            Toast.makeText(this, "Не удалось найти расписание по группам в этом PDF", Toast.LENGTH_LONG).show();
-            selectTab(urls.isEmpty() ? 0 : 2);
+            problem = why + (urls.isEmpty() ? "" : "\n\nСсылок в файле: " + urls.size() + ", они добавлены на вкладку «Ссылки».");
+            info.setText("В этом PDF не нашлось расписания по группам.");
+            selectTab(0);
           }
         });
       } catch (Exception e) {
@@ -511,6 +522,8 @@ public class MainActivity extends Activity {
   // ---------- group & schedule ----------
   TextView sub, groupChip;
   boolean loading = false;
+  String selectedDate = null, problem = null;
+  final ArrayList<ScheduleParser.Sheet> lastLoaded = new ArrayList<>();
 
   String group() { return getSharedPreferences(PREFS, 0).getString(GROUP, ""); }
 
@@ -553,7 +566,8 @@ public class MainActivity extends Activity {
 
   ArrayList<String> knownGroups() {
     TreeSet<String> set = new TreeSet<>();
-    if (!sheets.isEmpty()) {
+    for (ScheduleParser.Sheet sh : lastLoaded) for (ScheduleParser.Column c : sh.columns) set.addAll(c.groups);
+    if (set.isEmpty() && !sheets.isEmpty()) {
       String d = sheets.get(0).date;
       for (ScheduleParser.Sheet sh : sheets) if (sh.date.equals(d)) for (ScheduleParser.Column c : sh.columns) set.addAll(c.groups);
     }
@@ -613,9 +627,32 @@ public class MainActivity extends Activity {
     while (sheets.size() > 12) sheets.remove(sheets.size() - 1);
   }
 
+  static String diagnose(String text, int chars, int pages) {
+    if (chars < 20) return "В этом PDF нет текста: похоже, это картинка или скан. Такой файл приложение прочитать не может. Попроси расписание в виде обычного PDF из Excel.";
+    int times = 0; Matcher m = ScheduleParser.TIME.matcher(text); while (m.find()) times++;
+    List<String> groups = ScheduleParser.groupTokens(text.replace('\n', ' '));
+    StringBuilder b = new StringBuilder("Не получилось найти таблицу пар в этом PDF.\n");
+    b.append("Страниц: ").append(pages).append(". Время пар (вида 08.00-09.30): ").append(times > 0 ? "найдено " + times : "не найдено").append(".");
+    if (!groups.isEmpty()) {
+      LinkedHashSet<String> uniq = new LinkedHashSet<>(groups);
+      ArrayList<String> few = new ArrayList<>(uniq);
+      b.append("\nПохоже на номера групп: ").append(TextUtils.join(", ", few.subList(0, Math.min(8, few.size()))));
+    }
+    if (times == 0) b.append("\nВ таблице должно быть время пар, иначе приложение не понимает, где какая пара.");
+    return b.toString();
+  }
+
+  ArrayList<ScheduleParser.Sheet> daysForGroup() {
+    ArrayList<ScheduleParser.Sheet> r = new ArrayList<>();
+    for (ScheduleParser.Sheet sh : sheets) if (sh.find(group()) != null) r.add(sh);
+    r.sort((a, b) -> Long.compare(dayKey(a.date), dayKey(b.date)));
+    return r;
+  }
+
   ScheduleParser.Sheet findSheet() {
     String g = group();
     if (g.isEmpty()) return null;
+    if (selectedDate != null) for (ScheduleParser.Sheet sh : sheets) if (sh.date.equals(selectedDate) && sh.find(g) != null) return sh;
     long today = todayKey(0);
     ScheduleParser.Sheet best = null;
     for (ScheduleParser.Sheet sh : sheets) {
@@ -732,6 +769,22 @@ public class MainActivity extends Activity {
 
   void renderSchedule() {
     if (loading) { empty("Читаю расписание…", "Секунду"); return; }
+    if (problem != null) {
+      TextView warn = text(problem, 14, 0xFF7A4B00, false);
+      warn.setBackground(round(0xFFFFF3D6, 14));
+      warn.setPadding(dp(14), dp(12), dp(14), dp(12));
+      warn.setLineSpacing(0, 1.15f);
+      listBox.addView(warn, lp(-1, -2));
+      LinearLayout row = new LinearLayout(this);
+      TextView a = pill("Другой PDF", true, this::pickPdf);
+      TextView b = pill("Скрыть", false, () -> { problem = null; renderList(); });
+      LinearLayout.LayoutParams l1 = lp(0, -2); l1.weight = 1; l1.rightMargin = dp(5);
+      LinearLayout.LayoutParams l2 = lp(0, -2); l2.weight = 1; l2.leftMargin = dp(5);
+      row.addView(a, l1); row.addView(b, l2);
+      listBox.addView(row);
+      if (sheets.isEmpty()) return;
+      View gap = new View(this); listBox.addView(gap, lp(-1, dp(10)));
+    }
     if (sheets.isEmpty()) {
       empty("Расписания пока нет", "Поделись PDF с расписанием из MAX в «КНН пары» или выбери файл");
       listBox.addView(pill("Загрузить PDF", true, this::pickPdf));
@@ -746,8 +799,9 @@ public class MainActivity extends Activity {
     }
     ScheduleParser.Sheet sh = findSheet();
     if (sh == null) {
-      ScheduleParser.Sheet last = sheets.get(0);
-      empty("Группы " + g + " нет в расписании", "В загруженном PDF на " + last.date + (last.course.isEmpty() ? "" : " (" + last.course + " курс)") + " есть только другие группы. Загрузи PDF своего курса или выбери другую группу.");
+      ScheduleParser.Sheet last = lastLoaded.isEmpty() ? sheets.get(0) : lastLoaded.get(0);
+      ArrayList<String> gl = knownGroups();
+      empty("Группы " + g + " нет в расписании", "В PDF на " + last.date + (last.course.isEmpty() ? "" : " (" + last.course + " курс)") + " есть группы: " + TextUtils.join(", ", gl.subList(0, Math.min(12, gl.size()))) + ". Загрузи PDF своего курса или выбери другую группу.");
       listBox.addView(pill("Загрузить PDF", true, this::pickPdf));
       listBox.addView(pill("Сменить группу", false, this::groupDialog));
       return;
@@ -755,6 +809,36 @@ public class MainActivity extends Activity {
     ScheduleParser.Column col = sh.find(g);
     long k = dayKey(sh.date);
     boolean isToday = k == todayKey(0);
+
+    ArrayList<ScheduleParser.Sheet> days = daysForGroup();
+    if (days.size() > 1) {
+      HorizontalScrollView hs = new HorizontalScrollView(this);
+      hs.setHorizontalScrollBarEnabled(false);
+      LinearLayout chips = new LinearLayout(this);
+      chips.setPadding(dp(1), 0, dp(1), dp(10));
+      String[] wd = {"Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"};
+      for (ScheduleParser.Sheet d : days) {
+        long dk = dayKey(d.date);
+        String label = d.date.length() >= 5 ? d.date.substring(0, 5) : d.date;
+        try {
+          Calendar c = Calendar.getInstance(); c.set((int) (dk / 10000), (int) (dk / 100 % 100) - 1, (int) (dk % 100));
+          label = wd[c.get(Calendar.DAY_OF_WEEK) - 1] + " " + label;
+        } catch (Exception ignored) {}
+        if (dk == todayKey(0)) label = "Сегодня";
+        else if (dk == todayKey(1)) label = "Завтра";
+        boolean on = d == sh;
+        TextView chip = text(label, 14, on ? Color.WHITE : PRIMARY, true);
+        GradientDrawable cb = round(on ? PRIMARY : CARD, 12);
+        if (!on) cb.setStroke(dp(1.5f), 0x551E4FD8);
+        chip.setBackground(cb);
+        chip.setPadding(dp(14), dp(8), dp(14), dp(8));
+        LinearLayout.LayoutParams cl = lp(-2, -2); cl.rightMargin = dp(8);
+        chip.setOnClickListener(v -> { selectedDate = d.date; renderList(); });
+        chips.addView(chip, cl);
+      }
+      hs.addView(chips);
+      listBox.addView(hs, lp(-1, -2));
+    }
 
     // day card
     LinearLayout day = new LinearLayout(this);
