@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="КНН пары">
+<meta name="theme-color" content="#1E4FD8">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>КНН пары</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@600&display=swap">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); color-scheme: light; }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+
+/* Layout: blue header band with tabs over a single column of cards, mobile-first, max 640px */
+:root {
+  --brand: #1E4FD8; --brand-2: #4F7DF5; --brand-ink: #15307F;
+  --bg: #F2F4F9; --card: #FFFFFF; --fg: #171C2B; --muted: #6B7385; --line: #E3E7EF; --soft: #E8EEFD;
+  --live: #0E9F6E; --live-soft: #E3F6EE; --star: #E8A100; --warn-bg: #FFF3D6; --warn-fg: #7A4B00;
+  --on-brand: #FFFFFF; --shadow: 0 1px 2px rgba(23,28,43,.06), 0 4px 14px rgba(30,79,216,.06);
+  --f-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --f-body: "Golos Text", -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --brand: #5B86FF; --brand-2: #2B4FC0; --brand-ink: #0F1F57;
+  --bg: #0E1220; --card: #171C2E; --fg: #E8ECF7; --muted: #98A0B8; --line: #283048; --soft: #1E2A4D;
+  --live: #3CCB94; --live-soft: #12352A; --star: #FFC23D; --warn-bg: #3A2C0E; --warn-fg: #FFD98A;
+  --on-brand: #FFFFFF; --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --brand: #5B86FF; --brand-2: #2B4FC0; --brand-ink: #0F1F57;
+  --bg: #0E1220; --card: #171C2E; --fg: #E8ECF7; --muted: #98A0B8; --line: #283048; --soft: #1E2A4D;
+  --live: #3CCB94; --live-soft: #12352A; --star: #FFC23D; --warn-bg: #3A2C0E; --warn-fg: #FFD98A;
+  --on-brand: #FFFFFF; --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.4; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--brand); }
+button, input, label.btn { font: inherit; }
+.wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.top { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: var(--on-brand); border-radius: 0 0 26px 26px; }
+header.top .wrap { padding-block: 18px 16px; display: grid; gap: 14px; }
+.titlerow { display: flex; align-items: center; gap: 12px; }
+.titlerow h1 { font-family: var(--f-display); font-weight: 600; font-size: 24px; margin: 0; flex: 1; letter-spacing: -.01em; }
+.chip { border: 1.5px solid rgba(255,255,255,.55); background: rgba(255,255,255,.18); color: var(--on-brand); border-radius: 999px; padding: 7px 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.who { background: none; border: 0; color: rgba(255,255,255,.88); padding: 0; text-align: left; cursor: pointer; font-size: 14px; }
+.seg { display: flex; background: rgba(255,255,255,.2); border-radius: 14px; padding: 4px; }
+.seg button { flex: 1; border: 0; background: none; color: rgba(255,255,255,.92); font-weight: 600; padding: 9px 0; border-radius: 11px; cursor: pointer; }
+.seg button[aria-selected="true"] { background: #FFFFFF; color: #1E4FD8; }
+:focus-visible { outline: 2.5px solid var(--brand); outline-offset: 2px; }
+header :focus-visible { outline-color: #FFFFFF; }
+
+main .wrap { padding-block: 16px 40px; display: grid; gap: 10px; }
+.card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 14px; }
+.daycard { background: linear-gradient(135deg, var(--brand-ink), var(--brand)); color: var(--on-brand); border-radius: 20px; padding: 16px 18px; display: grid; gap: 4px; }
+.daycard .d { display: flex; align-items: center; gap: 10px; }
+.daycard h2 { margin: 0; font-size: 20px; font-weight: 700; flex: 1; text-wrap: balance; }
+.daycard p { margin: 0; opacity: .88; font-size: 14px; }
+.badge { border-radius: 10px; padding: 3px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.daycard .badge { background: #FFFFFF; color: #1E4FD8; }
+.daycard .badge.today { color: #0E9F6E; }
+.sample { background: var(--warn-bg); color: var(--warn-fg); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+
+.lesson { display: grid; gap: 8px; }
+.lesson.live { outline: 2px solid var(--live); }
+.lesson.next { outline: 1.5px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.lesson.done { opacity: .55; }
+.lt { display: flex; align-items: center; gap: 10px; }
+.num { width: 32px; height: 32px; border-radius: 50%; background: var(--soft); color: var(--brand); display: grid; place-items: center; font-weight: 700; flex: none; }
+.live .num { background: var(--live); color: #FFFFFF; }
+.time { font-weight: 600; flex: 1; font-variant-numeric: tabular-nums; }
+.st { background: var(--soft); color: var(--brand); }
+.live .st { background: var(--live-soft); color: var(--live); }
+.subj { font-size: 17px; font-weight: 600; line-height: 1.3; text-wrap: balance; }
+.trow { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #FFFFFF; font-size: 12px; font-weight: 700; flex: none; }
+.tn { flex: 1; min-width: 0; }
+.tn small { display: block; color: var(--muted); font-size: 12px; }
+a.go { background: var(--brand); color: #FFFFFF; text-decoration: none; font-weight: 600; padding: 9px 16px; border-radius: 12px; flex: none; }
+a.go:active { transform: scale(.97); }
+
+.btn { display: flex; justify-content: center; align-items: center; gap: 8px; border-radius: 14px; padding: 13px 14px; font-weight: 600; cursor: pointer; text-align: center; border: 1.5px solid color-mix(in srgb, var(--brand) 35%, transparent); background: var(--card); color: var(--brand); }
+.btn.primary { background: var(--brand); color: #FFFFFF; border-color: var(--brand); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.empty { text-align: center; padding: 30px 12px; display: grid; gap: 6px; }
+.empty b { font-size: 17px; }
+.empty span, .hint { color: var(--muted); font-size: 14px; }
+.hint { text-align: center; font-size: 12px; padding-top: 6px; }
+.label { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 12px 4px 0; }
+
+.search { width: 100%; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 14px; padding: 13px 14px; font-size: 16px; }
+.tcard { display: flex; align-items: center; gap: 12px; }
+.tcard .av { width: 42px; height: 42px; font-size: 15px; }
+.tcard .tn b { display: block; font-weight: 600; }
+.star { background: none; border: 0; font-size: 22px; color: var(--line); cursor: pointer; padding: 4px 6px; }
+.star[aria-pressed="true"] { color: var(--star); }
+
+.sheet { position: fixed; inset: 0; background: rgba(10,14,30,.45); display: grid; align-items: end; z-index: 20; }
+.sheet .panel { background: var(--card); border-radius: 22px 22px 0 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 12px; max-height: 80vh; overflow: auto; max-width: 640px; width: 100%; margin: 0 auto; }
+.panel h3 { margin: 0; font-size: 18px; }
+.panel p { margin: 0; color: var(--muted); font-size: 14px; }
+.groups { display: flex; flex-wrap: wrap; gap: 8px; }
+.groups button { border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+.groups button[aria-pressed="true"] { border-color: var(--brand); color: var(--brand); }
+.days { display: flex; gap: 8px; overflow-x: auto; padding: 1px 1px 2px; scrollbar-width: none; }
+.days::-webkit-scrollbar { display: none; }
+.days button { flex: none; border: 1.5px solid color-mix(in srgb, var(--brand) 35%, transparent); background: var(--card); color: var(--brand); border-radius: 12px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+.days button[aria-pressed="true"] { background: var(--brand); color: #FFFFFF; border-color: var(--brand); }
+.warn { background: var(--warn-bg); color: var(--warn-fg); border-radius: 14px; padding: 12px 14px; font-size: 14px; white-space: pre-line; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 11px 16px; border-radius: 14px; font-size: 14px; z-index: 30; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.2); }
+details.howto summary { cursor: pointer; font-weight: 600; }
+details.howto ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) { .lesson, .tcard { transition: transform .12s; } }
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="titlerow">
+      <h1>КНН пары</h1>
+      <button class="chip" id="groupBtn" type="button">Группа ▾</button>
+    </div>
+    <button class="who" id="whoBtn" type="button">Нажми, чтобы ввести ФИО ✎</button>
+    <div class="seg" role="tablist">
+      <button type="button" role="tab" id="tabS" aria-selected="true">Расписание</button>
+      <button type="button" role="tab" id="tabT" aria-selected="false">Преподаватели</button>
+    </div>
+  </div>
+</header>
+<main><div class="wrap" id="view"></div></main>
+<input type="file" id="pdfInput" accept="application/pdf,.pdf" hidden>
+<div class="toast" id="toast" hidden></div>
+<div class="sheet" id="sheet" hidden><div class="panel" id="panel"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script>
+// Schedule parser: port of ScheduleParser.java. Glyph = {x, w, y (baseline, top-down), h (font size), s}
+var Sched = (function () {
+  var LABEL = /^\s*(?:(\d{1,2})\s*(?:\)|-?\s*(?:я\s*)?пара|\.(?!\d))\s*)?(\d{1,2})[.:](\d{2})\s*[-–—]\s*(\d{1,2})[.:](\d{2})/i;
+  var TIME = /(\d{1,2})[.:](\d{2})\s*[-–—]\s*(\d{1,2})[.:](\d{2})/;
+  var TIME_G = /(\d{1,2})[.:](\d{2})\s*[-–—]\s*(\d{1,2})[.:](\d{2})/g;
+  var NUM = /^\s*(\d{1,2})\s*(?:\)|-?\s*(?:я\s*)?пара|\.(?!\d))/i;
+  var GROUP_TOKEN = /^[0-9][0-9А-ЯЁA-Zа-яё.\-\/]*$/;
+  var SPEC = /\d{2}\.\d{2}\.\d{2}/;
+  var SPEC_G = /\d{2}\.\d{2}\.\d{2}/g;
+  var DATE = /(\d{1,2}\.\d{1,2}\.\d{2,4})/;
+  var COURSE = /(\d)\s*курс/i;
+  var DAY = /(понедельник|вторник|среда|четверг|пятница|суббота|воскресенье)/i;
+  var NAME = /^[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?(?:\s+[А-ЯЁ]\.\s?(?:[А-ЯЁ]\.?)?)?$/;
+
+  function blank(s) { return s.trim() === ""; }
+
+  function collides(line, g) {
+    for (var i = 0; i < line.g.length; i++) {
+      var o = line.g[i];
+      if (blank(o.s)) continue;
+      var ov = Math.min(o.x + o.w, g.x + g.w) - Math.max(o.x, g.x);
+      if (ov > Math.min(o.w, g.w) * 0.35) return true;
+    }
+    return false;
+  }
+
+  function lines(glyphs) {
+    var gs = glyphs.slice().sort(function (a, b) { return a.y - b.y; });
+    var out = [];
+    gs.forEach(function (g) {
+      var target = null;
+      for (var i = out.length - 1; i >= 0 && i >= out.length - 4; i--) {
+        var l = out[i];
+        if (Math.abs(g.y - l.y) > Math.max(2, l.h * 0.3)) continue;
+        if (blank(g.s) || !collides(l, g)) { target = l; break; }
+      }
+      if (target) target.g.push(g); else out.push({ y: g.y, h: g.h, g: [g] });
+    });
+    out.forEach(function (l) {
+      l.g.sort(function (a, b) { return a.x - b.x; });
+      var text = "", map = [], prev = null;
+      l.g.forEach(function (g, i) {
+        if (prev && g.x - (prev.x + prev.w) > Math.max(1.2, g.h * 0.18) && prev.s !== " " && g.s !== " ") { text += " "; map.push(-1); }
+        for (var k = 0; k < g.s.length; k++) { text += g.s[k]; map.push(i); }
+        prev = g;
+      });
+      l.text = text; l.map = map;
+    });
+    return out;
+  }
+
+  function segments(l, gap) {
+    var out = [], sb = "", x0 = 0, x1 = 0, prev = null;
+    l.g.forEach(function (g) {
+      if (!prev || g.x - (prev.x + prev.w) > gap) {
+        if (prev) out.push([x0, x1, sb.trim()]);
+        sb = ""; x0 = g.x;
+      } else if (g.x - (prev.x + prev.w) > Math.max(1.2, g.h * 0.18) && prev.s !== " " && g.s !== " ") sb += " ";
+      sb += g.s; x1 = g.x + g.w; prev = g;
+    });
+    if (prev) out.push([x0, x1, sb.trim()]);
+    return out.filter(function (o) { return o[2] !== ""; });
+  }
+
+  function clean(s) { return s.replace(/\s+/g, " ").trim(); }
+
+  function parsePage(glyphs, known) {
+    var sheet = { date: "", weekday: "", course: "", columns: [] };
+    var ls = lines(glyphs);
+    ls.forEach(function (l) {
+      var m;
+      if (!sheet.date && l.text.toLowerCase().indexOf("расписание") >= 0 && (m = DATE.exec(l.text))) sheet.date = m[1];
+      if (!sheet.weekday && (m = DAY.exec(l.text))) sheet.weekday = m[1].toLowerCase();
+      if (!sheet.course && (m = COURSE.exec(l.text))) sheet.course = m[1];
+    });
+
+    var labels = [], proto = [], labelRight = 0;
+    ls.forEach(function (l) {
+      var m = LABEL.exec(l.text);
+      if (!m) return;
+      var end = m[0].length - 1;
+      while (end > 0 && l.map[end] < 0) end--;
+      var last = l.g[l.map[end]];
+      labelRight = Math.max(labelRight, last.x + last.w);
+      labels.push(l.y);
+      proto.push({ num: m[1] ? +m[1] : proto.length + 1, time: m[2] + ":" + m[3] + "–" + m[4] + ":" + m[5] });
+    });
+    if (!labels.length) return sheet;
+
+    var header = null, spec = null, i;
+    ls.forEach(function (l) { if (l.y < labels[0] && /^\s*Пара/.test(l.text)) header = l; });
+    for (i = 0; i < ls.length; i++) {
+      var l = ls[i];
+      if (l.y >= labels[0] || (header && l.y <= header.y)) continue;
+      if (SPEC.test(l.text) && l.text.toLowerCase().indexOf("расписание") < 0) { spec = l; break; }
+    }
+    if (!header) {
+      for (i = 0; i < ls.length; i++) if (ls[i].y < labels[0] && /\d{3,4}[А-ЯЁA-Z].*\d{3,4}[А-ЯЁA-Z]/.test(ls[i].text)) { header = ls[i]; break; }
+    }
+    if (!header) return sheet;
+    var left = labelRight + 1;
+
+    var centers = [], specs = [];
+    if (spec) segments(spec, 8).forEach(function (s) {
+      if (SPEC.test(s[2]) && s[1] > left) { centers.push((s[0] + s[1]) / 2); specs.push(s[2]); }
+    });
+    var hTop = header.y - header.h * 1.4, hBot = spec ? spec.y - spec.h * 0.6 : header.y + header.h * 1.4;
+    var headSegs = [];
+    ls.forEach(function (l) {
+      if (l.y >= hTop && l.y <= hBot && l.h <= header.h * 1.4 && l.text.toLowerCase().indexOf("курс") < 0)
+        segments(l, 8).forEach(function (s) { if (s[1] > left && s[2].indexOf("Пара") !== 0) headSegs.push(s); });
+    });
+    if (!centers.length) {
+      headSegs.sort(function (a, b) { return a[0] - b[0]; });
+      var cx0 = -1, cx1 = -1;
+      headSegs.forEach(function (s) {
+        if (cx0 < 0) { cx0 = s[0]; cx1 = s[1]; return; }
+        if (s[0] - cx1 > 24) { centers.push((cx0 + cx1) / 2); specs.push(""); cx0 = s[0]; }
+        cx1 = Math.max(cx1, s[1]);
+      });
+      if (cx0 >= 0) { centers.push((cx0 + cx1) / 2); specs.push(""); }
+    }
+    var nc = centers.length, lo = [], hi = [];
+    for (i = 0; i < nc; i++) {
+      lo[i] = i === 0 ? left : (centers[i - 1] + centers[i]) / 2;
+      hi[i] = i === nc - 1 ? Infinity : (centers[i] + centers[i + 1]) / 2;
+      var col = { groups: [], spec: specs[i], lessons: [] }, sb = "";
+      headSegs.forEach(function (s) { var cx = (s[0] + s[1]) / 2; if (cx >= lo[i] && cx < hi[i]) sb += s[2] + ","; });
+      col.groups = groupTokens(sb);
+      sheet.columns.push(col);
+    }
+
+    var nr = labels.length, top = [], bot = [];
+    var firstTop = (spec ? spec.y : header.y) + 2;
+    for (var r = 0; r < nr; r++) {
+      top[r] = r === 0 ? firstTop : bot[r - 1];
+      bot[r] = r === nr - 1 ? labels[r] + Math.max(20, labels[r] - top[r]) : (labels[r] + labels[r + 1]) / 2;
+    }
+
+    for (var ci = 0; ci < nc; ci++) {
+      for (r = 0; r < nr; r++) {
+        var cell = glyphs.filter(function (g) { var cx = g.x + g.w / 2; return cx >= lo[ci] && cx < hi[ci] && g.y > top[r] && g.y <= bot[r] && !blank(g.s); });
+        if (!cell.length) continue;
+        var texts = lines(cell).map(function (l) { return clean(l.text); });
+        var sp = split(texts, known), subject = sp.subject, teachers = sp.teachers;
+        if (!subject && !teachers.length) continue;
+        sheet.columns[ci].lessons.push({ num: proto[r].num, time: proto[r].time, subject: subject, teachers: teachers });
+      }
+    }
+    return sheet;
+  }
+
+
+  function split(texts, known) {
+    var teachers = [], cut = texts.length;
+    for (var t = texts.length - 1; t >= 0; t--) {
+      var items = texts[t].split(/[,;]/), nameLine = true, isKnown = true, names = [];
+      for (var k = 0; k < items.length; k++) {
+        var it = items[k].trim(); if (!it) continue;
+        if (!NAME.test(it)) { nameLine = false; break; }
+        names.push(it);
+        if (!known[it.split(/\s+/)[0]]) isKnown = false;
+      }
+      if (!nameLine || !names.length) break;
+      if (t !== texts.length - 1 && !isKnown) break;
+      if (t === texts.length - 1 && texts.length === 1 && !isKnown) break;
+      for (k = names.length - 1; k >= 0; k--) if (teachers.indexOf(names[k]) < 0) teachers.unshift(names[k]);
+      cut = t;
+    }
+    var subj = [];
+    texts.slice(0, cut).forEach(function (x) { if (subj.indexOf(x) < 0) subj.push(x); });
+    return { subject: clean(subj.join(" ")).replace(/[,;]$/, ""), teachers: teachers };
+  }
+
+  function groupTokens(text) {
+    var out = [];
+    text.split(/[,;\s]+/).forEach(function (t) {
+      t = t.trim();
+      if (t.length < 3 || /^\d{2}\.\d{2}\.\d{2}$/.test(t) || /^\d{1,2}\.\d{1,2}\.\d{2,4}$/.test(t) || TIME.test(t)) return;
+      if (GROUP_TOKEN.test(t) && (/\d{3,}/.test(t) || /\d.*[А-ЯЁA-Zа-яё]/.test(t))) out.push(t);
+    });
+    return out;
+  }
+
+  function titleInfo(sheet, ls) {
+    ls.forEach(function (l) {
+      var m;
+      if (!sheet.date && l.text.toLowerCase().indexOf("расписание") >= 0 && (m = DATE.exec(l.text))) sheet.date = m[1];
+      if (!sheet.weekday && (m = DAY.exec(l.text))) sheet.weekday = m[1].toLowerCase();
+      if (!sheet.course && (m = COURSE.exec(l.text))) sheet.course = m[1];
+    });
+    if (!sheet.date) for (var i = 0; i < ls.length; i++) { var m2 = DATE.exec(ls[i].text); if (m2 && !SPEC.test(ls[i].text)) { sheet.date = m2[1]; break; } }
+  }
+
+  // ===================== grid-based parsing =====================
+  function addRect(out, x0, y0, x1, y1, stroked) {
+    var l = Math.min(x0, x1), r = Math.max(x0, x1), t = Math.min(y0, y1), b = Math.max(y0, y1), w = r - l, h = b - t;
+    if (h <= 3 && w > 3) out.push({ h: true, pos: (t + b) / 2, a: l, b: r });
+    else if (w <= 3 && h > 3) out.push({ h: false, pos: (l + r) / 2, a: t, b: b });
+    else if (stroked && w > 3 && h > 3) {
+      out.push({ h: true, pos: t, a: l, b: r }, { h: true, pos: b, a: l, b: r }, { h: false, pos: l, a: t, b: b }, { h: false, pos: r, a: t, b: b });
+    }
+  }
+  function addLine(out, x0, y0, x1, y1) {
+    if (Math.abs(y1 - y0) < 1.5 && Math.abs(x1 - x0) > 3) out.push({ h: true, pos: (y0 + y1) / 2, a: Math.min(x0, x1), b: Math.max(x0, x1) });
+    else if (Math.abs(x1 - x0) < 1.5 && Math.abs(y1 - y0) > 3) out.push({ h: false, pos: (x0 + x1) / 2, a: Math.min(y0, y1), b: Math.max(y0, y1) });
+  }
+  function cluster(v, tol) {
+    v = v.slice().sort(function (a, b) { return a - b; });
+    var out = [], sum = 0, n = 0, last = NaN;
+    v.forEach(function (x) { if (n && x - last > tol) { out.push(sum / n); sum = 0; n = 0; } sum += x; n++; last = x; });
+    if (n) out.push(sum / n);
+    return out;
+  }
+  function coverage(segs, horiz, pos, a, b, tol) {
+    var iv = [];
+    segs.forEach(function (s) { if (s.h === horiz && Math.abs(s.pos - pos) <= tol) { var lo = Math.max(a, s.a), hi = Math.min(b, s.b); if (hi > lo) iv.push([lo, hi]); } });
+    iv.sort(function (p, q) { return p[0] - q[0]; });
+    var cov = 0, cl = -1, ch = -1;
+    iv.forEach(function (i) { if (ch < 0 || i[0] > ch) { if (ch > 0) cov += ch - cl; cl = i[0]; ch = i[1]; } else ch = Math.max(ch, i[1]); });
+    if (ch > 0) cov += ch - cl;
+    return b > a ? cov / (b - a) : 0;
+  }
+  function cells(segs, glyphs) {
+    var xs = cluster(segs.filter(function (s) { return !s.h; }).map(function (s) { return s.pos; }), 2.5);
+    var ys = cluster(segs.filter(function (s) { return s.h; }).map(function (s) { return s.pos; }), 2.5);
+    var nx = xs.length - 1, ny = ys.length - 1;
+    if (nx < 2 || ny < 2 || nx * ny > 20000) return null;
+    var parent = []; for (var i = 0; i < nx * ny; i++) parent[i] = i;
+    function find(i) { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; }
+    for (var j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
+      if (i + 1 < nx && coverage(segs, false, xs[i + 1], ys[j], ys[j + 1], 2.5) < 0.5) parent[find(j * nx + i)] = find(j * nx + i + 1);
+      if (j + 1 < ny && coverage(segs, true, ys[j + 1], xs[i], xs[i + 1], 2.5) < 0.5) parent[find(j * nx + i)] = find((j + 1) * nx + i);
+    }
+    var map = {}, out = [];
+    for (j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
+      var root = find(j * nx + i), c = map[root];
+      if (!c) { c = map[root] = { x0: xs[i], x1: xs[i + 1], y0: ys[j], y1: ys[j + 1], col0: i, g: [], texts: [], text: "" }; out.push(c); }
+      else { c.x0 = Math.min(c.x0, xs[i]); c.x1 = Math.max(c.x1, xs[i + 1]); c.y0 = Math.min(c.y0, ys[j]); c.y1 = Math.max(c.y1, ys[j + 1]); c.col0 = Math.min(c.col0, i); }
+    }
+    glyphs.forEach(function (g) {
+      if (blank(g.s)) return;
+      var cx = g.x + g.w / 2, cy = g.y - g.h * 0.3;
+      for (var k = 0; k < out.length; k++) { var c = out[k]; if (cx >= c.x0 && cx < c.x1 && cy >= c.y0 && cy < c.y1) { c.g.push(g); break; } }
+    });
+    out.forEach(function (c) { lines(c.g).forEach(function (l) { var t = clean(l.text); if (t) c.texts.push(t); }); c.text = c.texts.join(" "); });
+    return out;
+  }
+
+  function parseGrid(glyphs, segs, known) {
+    if (!segs || segs.length < 6) return null;
+    var cs = cells(segs, glyphs);
+    if (!cs) return null;
+    var sheet = { date: "", weekday: "", course: "", columns: [] };
+    titleInfo(sheet, lines(glyphs));
+    var minCol = Infinity;
+    cs.forEach(function (c) { if (TIME.test(c.text)) minCol = Math.min(minCol, c.col0); });
+    var labels = cs.filter(function (c) { return c.col0 === minCol && TIME.test(c.text); }).sort(function (a, b) { return a.y0 - b.y0; });
+    if (!labels.length) return null;
+    var labelRight = 0; labels.forEach(function (c) { labelRight = Math.max(labelRight, c.x1); });
+    var lastY = labels[labels.length - 1].y0;
+    var heads = cs.filter(function (c) {
+      if (c.x0 < labelRight - 1 || c.y1 > lastY + 1) return false;
+      for (var i = 0; i < labels.length; i++) if (c.y0 >= labels[i].y0 - 1 && c.y1 <= labels[i].y1 + 1) return false;
+      return groupTokens(c.text).length > 0;
+    });
+    if (!heads.length) return null;
+    var byKey = {}, order = [];
+    labels.forEach(function (lab, idx) {
+      var tm = TIME.exec(lab.text), nm = NUM.exec(lab.text);
+      var num = nm ? +nm[1] : idx + 1, time = tm[1] + ":" + tm[2] + "–" + tm[3] + ":" + tm[4];
+      var ref = null;
+      heads.forEach(function (h) { if (h.y1 <= lab.y0 + 1 && (!ref || h.y1 > ref.y1)) ref = h; });
+      if (!ref) return;
+      var band = heads.filter(function (h) { return h.y1 <= lab.y0 + 1 && h.y0 < ref.y1 - 1 && h.y1 > ref.y0 + 1; }).sort(function (a, b) { return a.x0 - b.x0; });
+      band.forEach(function (h) {
+        var key = Math.round(h.x0) + ":" + Math.round(h.y0), col = byKey[key];
+        if (!col) {
+          col = byKey[key] = { groups: groupTokens(h.text), spec: "", lessons: [] }; order.push(key);
+          for (var i = 0; i < cs.length; i++) { var s2 = cs[i]; if (s2.y0 >= h.y1 - 1 && s2.y1 <= lab.y0 + 1 && s2.x0 >= h.x0 - 1 && s2.x1 <= h.x1 + 1) { var sm = SPEC.exec(s2.text); if (sm) { col.spec = sm[0]; break; } } }
+        }
+        var parts = cs.filter(function (c) {
+          if (c.y1 <= lab.y0 + 1 || c.y0 >= lab.y1 - 1 || !c.texts.length) return false;
+          var ov = Math.min(c.x1, h.x1) - Math.max(c.x0, h.x0);
+          return ov >= Math.min(c.x1 - c.x0, h.x1 - h.x0) * 0.5;
+        }).sort(function (a, b) { return Math.abs(a.y0 - b.y0) > 1 ? a.y0 - b.y0 : a.x0 - b.x0; });
+        var texts = []; parts.forEach(function (c) { texts = texts.concat(c.texts); });
+        if (!texts.length) return;
+        var sp = split(texts, known);
+        if (!sp.subject && !sp.teachers.length) return;
+        col.lessons.push({ num: num, time: time, subject: sp.subject, teachers: sp.teachers });
+      });
+    });
+    order.forEach(function (k) { if (byKey[k].groups.length) sheet.columns.push(byKey[k]); });
+    var n = 0; sheet.columns.forEach(function (c) { n += c.lessons.length; });
+    return n ? sheet : null;
+  }
+
+  function parse(glyphs, segs, known) {
+    var g = null;
+    try { g = parseGrid(glyphs, segs, known); } catch (e) {}
+    return g || parsePage(glyphs, known);
+  }
+
+  /** Table borders from a pdf.js operator list, in the same top-down coordinates as the text. */
+  function bordersFromOps(opList, viewport) {
+    var O = pdfjsLib.OPS, U = pdfjsLib.Util, segs = [];
+    var ctm = [1, 0, 0, 1, 0, 0], stack = [], rects = [], lns = [], boxes = [], box = null, cx = 0, cy = 0, sx = 0, sy = 0;
+    function dev(x, y) { var p = U.applyTransform([x, y], ctm); return U.applyTransform(p, viewport.transform); }
+    function grow(p) { if (!box) { box = [p[0], p[1], p[0], p[1]]; boxes.push(box); return; } box[0] = Math.min(box[0], p[0]); box[1] = Math.min(box[1], p[1]); box[2] = Math.max(box[2], p[0]); box[3] = Math.max(box[3], p[1]); }
+    function clear() { rects = []; lns = []; boxes = []; box = null; }
+    function commit(stroked) {
+      rects.forEach(function (r) { addRect(segs, r[0], r[1], r[2], r[3], stroked); });
+      if (stroked) lns.forEach(function (l) { addLine(segs, l[0], l[1], l[2], l[3]); });
+      else boxes.forEach(function (b) { addRect(segs, b[0], b[1], b[2], b[3], false); });
+      clear();
+    }
+    var fn = opList.fnArray, args = opList.argsArray;
+    for (var i = 0; i < fn.length; i++) {
+      var op = fn[i], a = args[i];
+      if (op === O.save) stack.push(ctm.slice());
+      else if (op === O.restore) { if (stack.length) ctm = stack.pop(); }
+      else if (op === O.transform) ctm = U.transform(ctm, a);
+      else if (op === O.paintFormXObjectBegin) { stack.push(ctm.slice()); if (a && a[0]) ctm = U.transform(ctm, a[0]); }
+      else if (op === O.paintFormXObjectEnd) { if (stack.length) ctm = stack.pop(); }
+      else if (op === O.constructPath) {
+        var ops = a[0], co = a[1], k = 0;
+        for (var j = 0; j < ops.length; j++) {
+          var o = ops[j];
+          if (o === O.rectangle) {
+            var x = co[k++], y = co[k++], w = co[k++], h = co[k++];
+            var p0 = dev(x, y), p1 = dev(x + w, y + h), p2 = dev(x + w, y), p3 = dev(x, y + h);
+            rects.push([Math.min(p0[0], p1[0], p2[0], p3[0]), Math.min(p0[1], p1[1], p2[1], p3[1]), Math.max(p0[0], p1[0], p2[0], p3[0]), Math.max(p0[1], p1[1], p2[1], p3[1])]);
+            box = null; cx = sx = x; cy = sy = y;
+          } else if (o === O.moveTo) { cx = sx = co[k++]; cy = sy = co[k++]; box = null; grow(dev(cx, cy)); }
+          else if (o === O.lineTo) { var nx = co[k++], ny = co[k++], q0 = dev(cx, cy), q1 = dev(nx, ny); lns.push([q0[0], q0[1], q1[0], q1[1]]); grow(q1); cx = nx; cy = ny; }
+          else if (o === O.curveTo) { k += 4; cx = co[k++]; cy = co[k++]; }
+          else if (o === O.curveTo2 || o === O.curveTo3) { k += 2; cx = co[k++]; cy = co[k++]; }
+          else if (o === O.closePath) { if (cx !== sx || cy !== sy) { var r0 = dev(cx, cy), r1 = dev(sx, sy); lns.push([r0[0], r0[1], r1[0], r1[1]]); } cx = sx; cy = sy; }
+        }
+      }
+      else if (op === O.stroke || op === O.closeStroke || op === O.fillStroke || op === O.eoFillStroke || op === O.closeFillStroke || op === O.closeEOFillStroke) commit(true);
+      else if (op === O.fill || op === O.eoFill) commit(false);
+      else if (op === O.endPath) clear();
+    }
+    return segs;
+  }
+
+  /** pdf.js page -> glyphs (one per character, positioned proportionally inside each text run). */
+  function glyphsFromContent(content, viewport) {
+    var out = [];
+    content.items.forEach(function (it) {
+      if (!it.str) return;
+      var tx = pdfjsLib.Util.transform(viewport.transform, it.transform);
+      var size = Math.hypot(tx[2], tx[3]) || it.height || 10;
+      var x = tx[4], y = tx[5];
+      var width = it.width * viewport.scale;
+      var n = it.str.length, cw = width / n;
+      for (var i = 0; i < n; i++) out.push({ x: x + cw * i, w: cw, y: y, h: size, s: it.str[i] });
+    });
+    return out;
+  }
+
+  function normGroup(g) {
+    var lat = "AKBCEMHPTXO", cyr = "АКВСЕМНРТХО";
+    g = g.toUpperCase().replace(/\s+/g, "");
+    var r = "";
+    for (var i = 0; i < g.length; i++) { var p = lat.indexOf(g[i]); r += p >= 0 ? cyr[p] : g[i]; }
+    return r;
+  }
+
+  function find(sheet, group) {
+    var g = normGroup(group);
+    for (var i = 0; i < sheet.columns.length; i++)
+      for (var j = 0; j < sheet.columns[i].groups.length; j++)
+        if (normGroup(sheet.columns[i].groups[j]) === g) return sheet.columns[i];
+    return null;
+  }
+
+  return { parse: parse, parseGrid: parseGrid, addRect: addRect, addLine: addLine, bordersFromOps: bordersFromOps, groupTokens: groupTokens, TIME_G: TIME_G, parsePage: parsePage, glyphsFromContent: glyphsFromContent, find: find, normGroup: normGroup };
+})();
+if (typeof module !== "undefined") module.exports = Sched;
+
+</script>
+<script>
+var TEACHERS = [["Абашев Марат Амирович", "https://vks.knn-nk.ru/rooms/vym-wkm-mzf-d9d/join"], ["Агаева Галина Германовна", "https://vks.knn-nk.ru/rooms/aou-kl9-mit-ovb/join"], ["Агашкина Галия Кашфелгаяновна", "https://vks.knn-nk.ru/rooms/nbk-0zp-jqq-kdz/join"], ["Акамова Зилара Рафиковна", "https://vks.knn-nk.ru/rooms/mab-0vv-0tf-ebx/join"], ["Алдарёва Анна Николаевна", "https://vks.knn-nk.ru/rooms/ptf-okl-dzt-9w5/join"], ["Алексеева Елена Александровна", "https://vks.knn-nk.ru/rooms/q1f-jvj-cz7-iks/join"], ["Андреева Светлана Алексеевна", "https://vks.knn-nk.ru/rooms/c6t-ads-bws-kwb/join"], ["Афзалова Эльвира Геннадьевна", "https://vks.knn-nk.ru/rooms/6uo-g7p-ldj-2fu/join"], ["Ахмадуллина Гузель Забировна", "https://vks.knn-nk.ru/rooms/rmx-jjb-ykq-uye/join"], ["Ахмеева Алевтина Владимировна", "https://vks.knn-nk.ru/rooms/rmx-jjb-ykq-uye/join"], ["Ахметзянов Азат Айдарович", "https://vks.knn-nk.ru/rooms/u06-kwm-kpg-bt3/join"], ["Аюпова Алсу Ульфатовна", "https://vks.knn-nk.ru/rooms/qen-kdl-fnb-8rz/join"], ["Бадртдинова Анастасия Викторовна", "https://vks.knn-nk.ru/rooms/cwa-zaa-bkb-45k/join"], ["Байкова Диляра Раифовна", "https://vks.knn-nk.ru/rooms/unq-mcw-472-mz0/join"], ["Барбакова Людмила Валерьевна", "https://vks.knn-nk.ru/rooms/gis-qx5-zgw-ss4/join"], ["Бережков Андрей Вячеславович", "https://vks.knn-nk.ru/rooms/isb-ubb-kam-4wb/join"], ["Березина Наталья Николаевна", "https://vks.knn-nk.ru/rooms/7qc-pdo-nrj-jkn/join"], ["Биккинеев Марат Рушадович", "https://vks.knn-nk.ru/rooms/3zd-pfa-e8j-dtq/join"], ["Биккинеева Альфинур Миннегалеевна", "https://vks.knn-nk.ru/rooms/tem-0dx-y4w-g94/join"], ["Бикметова Гузель Фанисовна", "https://vks.knn-nk.ru/rooms/tem-0dx-y4w-g94/join"], ["Бронников Сергей Александрович", "https://vks.knn-nk.ru/rooms/rgd-25s-qa9-ojs/join"], ["Бронникова Нелля Радиковна", "https://vks.knn-nk.ru/rooms/96v-0v5-qse-jt5/join"], ["Валиев Ранис Рафилович", "https://vks.knn-nk.ru/rooms/krj-ctd-8mi-onh/join"], ["Валитова Татьяна Геннадьевна", "https://vks.knn-nk.ru/rooms/3fy-svc-27c-z5r/join"], ["Васильева Наталья Анатольевна", "https://vks.knn-nk.ru/rooms/csn-4kc-8wf-mpg/join"], ["Ветошкина Эльвира Фаритовна", "https://vks.knn-nk.ru/rooms/go0-c1z-slh-efe/join"], ["Галалетдинова Зульфия Минигаязовна", "https://vks.knn-nk.ru/rooms/pep-a2j-aat-b8n/join"], ["Галимова Лилия Абраровна", "https://vks.knn-nk.ru/rooms/8ll-oax-g7j-161/join"], ["Гарифуллина Зубарьят Сабитовна", "https://vks.knn-nk.ru/rooms/q8x-2aw-01v-ejl/join"], ["Гасымова Дарья Юлиановна", "https://vks.knn-nk.ru/rooms/zof-mkz-kfn-i4m/join"], ["Гаязова Айгуль Нильсоновна", "https://vks.knn-nk.ru/rooms/i0t-tnj-qcu-hbf/join"], ["Гиззатуллина Розалия Набиулловна", "https://vks.knn-nk.ru/rooms/sga-jti-uyd-oxo/join"], ["Гильмутдинов Рустам Рашитович", "https://vks.knn-nk.ru/rooms/5cx-rsb-usi-rm6/join"], ["Гильмутдинова Гузель Нафисовна", "https://vks.knn-nk.ru/rooms/wqi-ren-5x6-fvz/join"], ["Гирфанова Альбина Равилевна", "https://vks.knn-nk.ru/rooms/tar-v0i-las-6wk/join"], ["Глебова Татьяна Сергеевна", "https://vks.knn-nk.ru/rooms/wle-rzo-o3r-qwa/join"], ["Голиков Павел Александрович", "https://vks.knn-nk.ru/rooms/omr-u2k-vtf-rm6/join"], ["Голованова Анастасия Сергеевна", "https://vks.knn-nk.ru/rooms/yyw-qzi-6zv-igd/join"], ["Гончарова Анастасия Александровна", "https://vks.knn-nk.ru/rooms/r1g-8ik-bct-b8m/join"], ["Губайдуллина Рамзия Алмазовна", "https://vks.knn-nk.ru/rooms/0ti-w1o-0ks-o8o/join"], ["Гусманова Рамиля Назиповна", "https://vks.knn-nk.ru/rooms/978-x0v-bqi-e4z/join"], ["Гягяева", "https://vks.knn-nk.ru/rooms/mlc-wp7-sw0-7hf/join"], ["Данилова Феруза Шухратовна", "https://vks.knn-nk.ru/rooms/ofn-l7w-8li-zji/join"], ["Денисламова Расиля Тимерхановна", "https://vks.knn-nk.ru/rooms/zf9-jz1-uzm-bs2/join"], ["Дибаева Альмира Шайхразыевна", "https://vks.knn-nk.ru/rooms/3q9-dzh-vdc-6c5/join"], ["Донскова Оксана Геннадьевна", "https://vks.knn-nk.ru/rooms/hmd-arv-6eb-6oe/join"], ["Донскова Энже Раисовна", "https://vks.knn-nk.ru/rooms/zpt-bbh-jqv-jon/join"], ["Жеколдина Регина Раиловна", "https://vks.knn-nk.ru/rooms/mqi-cu7-uha-ex3/join"], ["Жумагалеева Вероника Жундыгалеевна", "https://vks.knn-nk.ru/rooms/zvl-mrj-6tp-b23/join"], ["Зайнуллина Илхамия Закиевна", "https://vks.knn-nk.ru/rooms/a8s-tm4-abr-h3i/join"], ["Закиева Алсу Раиловна", "https://vks.knn-nk.ru/rooms/a8s-tm4-abr-h3i/join"], ["Закирова Рамиля Рашитовна", "https://vks.knn-nk.ru/rooms/r5s-zly-bff-ivb/join"], ["Запускалова Дарья Викторовна", "https://vks.knn-nk.ru/rooms/ftj-5oy-pwq-yzx/join"], ["Зейналов Маариф Латиф оглы", "https://vks.knn-nk.ru/rooms/nix-tmv-rl0-eah/join"], ["Зеленкова Розалия Мансуровна", "https://vks.knn-nk.ru/rooms/vov-zbq-lns-gkh/join"], ["Зрячева Татьяна Васильевна", "https://vks.knn-nk.ru/rooms/cuv-jim-vdi-j8q/join"], ["Иванников Дмитрий Алексеевич", "https://vks.knn-nk.ru/rooms/vad-fya-atc-fis/join"], ["Иванова Альбина Владимировна", "https://vks.knn-nk.ru/rooms/tol-wp2-sm6-d0t/join"], ["Иванова Альбина Николаевна", "https://vks.knn-nk.ru/rooms/mn7-roi-xjt-fxh/join"], ["Исавнин Алексей Геннадьевич", "https://vks.knn-nk.ru/rooms/65i-h0u-hng-c5w/join"], ["Исмагилова Анастасия Фанисовна", "https://vks.knn-nk.ru/rooms/6bh-tbk-he5-0we/join"], ["Исмагилова Лилия Миннерасуловна", "https://vks.knn-nk.ru/rooms/jmv-tjg-sb3-7ib/join"], ["Казакова Алсу Мидехатовна", "https://vks.knn-nk.ru/rooms/vul-xda-cdy-0km/join"], ["Казакова Наталья Васильевна", "https://vks.knn-nk.ru/rooms/jze-enq-8hx-aca/join"], ["Калимуллин Булат Ильдарович", "https://vks.knn-nk.ru/rooms/f8b-tmk-nw9-wn6/join"], ["Калинина Анна Владимировна", "https://vks.knn-nk.ru/rooms/pf6-br3-xe2-aib/join"], ["Каримов Артур Билалович", "https://vks.knn-nk.ru/rooms/gxn-7s1-dpo-7kc/join"], ["Кирушина Диана Валерьевна", "https://vks.knn-nk.ru/rooms/1cc-weg-ebd-3hg/join"], ["Комаров Андрей Николаевич", "https://vks.knn-nk.ru/rooms/boy-a1b-lsx-lko/join"], ["Краева Гульнара Фаридовна", "https://vks.knn-nk.ru/rooms/76t-vtl-mw4-dzc/join"], ["Кузнецов Сергей Владимирович", "https://vks.knn-nk.ru/rooms/a7y-zhs-evi-wwt/join"], ["Курбанова Айгуль Ильшатовна", "https://vks.knn-nk.ru/rooms/go3-rvr-dwx-q9j/join"], ["Курлина Лидия Николаевна", "https://vks.knn-nk.ru/rooms/k17-ywj-mry-xbi/join"], ["Лаишевкина Анастасия Антоновна", "https://vks.knn-nk.ru/rooms/uz5-b1n-m4s-zzk/join"], ["Магазова Наталья Васильевна", "https://vks.knn-nk.ru/rooms/izm-e2k-rzs-f7v/join"], ["Максимова Марина Александровна", "https://vks.knn-nk.ru/rooms/2gp-fot-kmy-oq0/join"], ["Матросова Юлия Викторовна", "https://vks.knn-nk.ru/rooms/gol-u31-wtk-z9t/join"], ["Минигулова Альфия Минзаловна", "https://vks.knn-nk.ru/rooms/nvj-xba-rxm-bfl/join"], ["Муксинова Эндже Маратовна", "https://vks.knn-nk.ru/rooms/zix-f1s-wuw-htd/join"], ["Мухамадиева Лейсан Ирековна", "https://vks.knn-nk.ru/rooms/5wv-qju-fhl-6o2/join"], ["Мухибуллина Айгуль Ринатовна", "https://vks.knn-nk.ru/rooms/gpt-enu-zuf-v4j/join"], ["Никитина Мария Юрьевна", "https://vks.knn-nk.ru/rooms/p8f-qvh-nd8-ddh/join"], ["Никитина Юлия Александровна", "https://vks.knn-nk.ru/rooms/g95-nst-o5u-4ug/join"], ["Никонова Анастасия Владимировна", "https://vks.knn-nk.ru/rooms/iva-omb-wed-xys/join"], ["Носкова Татьяна Сергеевна", "https://vks.knn-nk.ru/rooms/bac-1x9-ab4-ohh/join"], ["Нуреева Расима Султановна", "https://vks.knn-nk.ru/rooms/941-gpd-ads-nbt/join"], ["Обухова Лариса Евгеньевна", "https://vks.knn-nk.ru/rooms/t2z-p32-fzq-zkz/join"], ["Обуховская Галина Александровна", "https://vks.knn-nk.ru/rooms/tbh-rsq-oyc-i9w/join"], ["Орел Елена Николаевна", "https://vks.knn-nk.ru/rooms/zeo-ehe-wsl-ph5/join"], ["Платкова Полина Николаевна", "https://vks.knn-nk.ru/rooms/aqs-gze-krd-brb/join"], ["Почкалина Зульфия Ильдусовна", "https://vks.knn-nk.ru/rooms/tx4-dvr-qvf-jix/join"], ["Пузырева Вера Алексеевна", "https://vks.knn-nk.ru/rooms/q6v-fs4-dt7-r9n/join"], ["Пупышев Игорь Васильевич", "https://vks.knn-nk.ru/rooms/1yi-0mt-jid-afs/join"], ["Ракаев Руслан Анварович", "https://vks.knn-nk.ru/rooms/lcz-pl9-zfo-kp0/join"], ["Расулов Даниил Леонидович", "https://vks.knn-nk.ru/rooms/tkg-rju-gmd-wi8/join"], ["Родионов Сергей Алексеевич", "https://vks.knn-nk.ru/rooms/nmj-uer-evh-kef/join"], ["Сабанаева Гульнара Арифовна", "https://vks.knn-nk.ru/rooms/etc-m11-qrg-qgb/join"], ["Савина Евгения Алексеевна", "https://vks.knn-nk.ru/rooms/32q-p70-dga-efx/join"], ["Савченко Ирина Владимировна", "https://vks.knn-nk.ru/rooms/n8x-db6-b9s-rq0/join"], ["Садриев Ильвир Равилевич", "https://vks.knn-nk.ru/rooms/k8x-xra-v5s-pdw/join"], ["Садыкова Дарья Николаевна", "https://vks.knn-nk.ru/rooms/bdq-xlx-ark-wz5/join"], ["Садыкова Сирина Ильсуровна", "https://vks.knn-nk.ru/rooms/jko-lc4-20e-xjn/join"], ["Саитов Рустам Раилович", "https://vks.knn-nk.ru/rooms/gt4-m92-ojr-w5u/join"], ["Саитова Лилия Раушановна", "https://vks.knn-nk.ru/rooms/jyp-vn9-raj-2ua/join"], ["Сайфутдинова Любовь Владимировна", "https://vks.knn-nk.ru/rooms/jml-or8-dxo-pdo/join"], ["Сафин Айрат", "https://vks.knn-nk.ru/rooms/80b-hcy-ljy-bo6/join"], ["Свешникова Анна Александровна", "https://vks.knn-nk.ru/rooms/tmi-bj4-yss-mlt/join"], ["Сибгатуллина Альбина Денисовна", "https://vks.knn-nk.ru/rooms/mo6-mqx-tul-2pw/join"], ["Силин Матвей Вадимович", "https://vks.knn-nk.ru/rooms/tul-tch-yzo-ek4/join"], ["Скрипина Валентина Александровна", "https://vks.knn-nk.ru/rooms/hfi-lmo-39o-l8b/join"], ["Соколова Алевтина Александровна", "https://vks.knn-nk.ru/rooms/qim-el0-wu1-wrt/join"], ["Соловьева Татьяна Сергеевна", "https://vks.knn-nk.ru/rooms/n5f-ybe-oeh-ts1/join"], ["Стрижакова Наталья Владимировна", "https://vks.knn-nk.ru/rooms/nbq-zwf-goc-egj/join"], ["Тарасова Наталья Николаевна", "https://vks.knn-nk.ru/rooms/mcp-buy-sdh-1iz/join"], ["Ульданова Раиля Анасовна", "https://vks.knn-nk.ru/rooms/ob2-qw3-wgd-cqm/join"], ["Урманчева Люфия Зуфаровна", "https://vks.knn-nk.ru/rooms/pnp-wne-nmd-6kg/join"], ["Усманова Занфира Миркасимовна", "https://vks.knn-nk.ru/rooms/yus-hgb-lvb-ltv/join"], ["Фазылова Альбина Ахатовна", "https://vks.knn-nk.ru/rooms/iic-e7e-iai-sqe/join"], ["Фархутдинов Артём Олегович", "https://vks.knn-nk.ru/rooms/doy-1p6-wdm-vue/join"], ["Фархутдинова Наталья Викторовна", "https://vks.knn-nk.ru/rooms/ac9-wd1-tke-sk2/join"], ["Фасхутдинова Ландыш Ильдусовна", "https://vks.knn-nk.ru/rooms/4ug-lc1-yy3-rzq/join"], ["Фаттахова Оксана Владимировна", "https://vks.knn-nk.ru/rooms/ljw-ykc-tvh-hyd/join"], ["Хабибуллина Азалия Азатовна", "https://vks.knn-nk.ru/rooms/nbk-0zp-jqq-kdz/join"], ["Хайров Михаил Гаязович", "https://vks.knn-nk.ru/rooms/vfx-itz-tcw-wr9/join"], ["Халимов Ислаф Искандерович", "https://vks.knn-nk.ru/rooms/uwq-uvz-ese-pqe/join"], ["Харисова Венера Соппуховна", "https://vks.knn-nk.ru/rooms/fsr-xrf-fmz-prx/join"], ["Хафизов Мирсаид Нурмухамедович", "https://vks.knn-nk.ru/rooms/bws-r3y-8yc-kkd/join"], ["Хоснуллина Гульчачак Разамировна", "https://vks.knn-nk.ru/rooms/bws-r3y-8yc-kkd/join"], ["Хузиахметова Лилия Наильевна", "https://vks.knn-nk.ru/rooms/tgt-09h-5vp-6hp/join"], ["Хуснутдинов Айрат Робертович", "https://vks.knn-nk.ru/rooms/2at-k8i-geo-0yk/join"], ["Шаврицкая Татьяна Александровна", "https://vks.knn-nk.ru/rooms/dfv-9eb-t9l-9ks/join"], ["Шайдуллина Альфира Анусовна", "https://vks.knn-nk.ru/rooms/a1n-tx9-trq-yie/join"], ["Шайлина Динара Марсовна", "https://vks.knn-nk.ru/rooms/hy0-n20-sma-g01/join"], ["Шайхелисламова Рафида Камилловна", "https://vks.knn-nk.ru/rooms/iy8-nwj-o1x-rnq/join"], ["Шарифуллина Эльвира Мавлетзяновна", "https://vks.knn-nk.ru/rooms/1hy-dzm-beq-hbh/join"], ["Шварц Анна Владимировна", "https://vks.knn-nk.ru/rooms/c98-suz-a6o-n7m/join"], ["Шемелова Ольга Васильевна", "https://vks.knn-nk.ru/rooms/kom-esj-uyg-vxc/join"], ["Шпраер Андрей Александрович", "https://vks.knn-nk.ru/rooms/wph-sux-q1d-gkv/join"], ["Шульгина Наталья Борисовна", "https://vks.knn-nk.ru/rooms/xt3-4su-xhh-d0e/join"], ["Юсупова Юлия Константиновна", "https://vks.knn-nk.ru/rooms/r1y-alu-qzq-tov/join"], ["Явкин Николай Сергеевич", "https://vks.knn-nk.ru/rooms/svq-y4s-hjx-l5x/join"], ["Ягудин Марат Масхутович", "https://vks.knn-nk.ru/rooms/s00-kjf-um6-ni3/join"], ["Ямалеев Ильнар Фаритович", "https://vks.knn-nk.ru/rooms/xvu-xij-n5e-8qp/join"]];
+var SAMPLE = {"date":"28.10.2026","weekday":"среда","course":"2","columns":[{"groups":["1515А"],"spec":"18.02.14","lessons":[{"num":1,"time":"17:30–18:15","subject":"Физическая и коллоидная химия","teachers":["Саитова"]},{"num":2,"time":"18:25–19:10","subject":"Общая и неорганическая химия","teachers":["Саитова"]},{"num":3,"time":"19:20–20:05","subject":"Метрология, стандпртизация и сертификация","teachers":["Городнова"]}]},{"groups":["3522А","3523А"],"spec":"09.02.07","lessons":[{"num":1,"time":"17:30–18:15","subject":"РЯКР","teachers":["Шульгина"]},{"num":2,"time":"18:25–19:10","subject":"Тат.яз в проф.деят-ти","teachers":["Зайнуллина","Садыкова"]},{"num":3,"time":"19:20–20:05","subject":"Архитектура аппаратных средств","teachers":["Исавнин"]},{"num":4,"time":"20:15–21:00","subject":"Архитектура аппаратных средств","teachers":["Исавнин"]}]},{"groups":["2513А","2514А","2515А"],"spec":"15.02.17","lessons":[{"num":1,"time":"17:30–18:15","subject":"Тат.яз в проф.деят-ти","teachers":["Гиззатуллина","Шарифуллина"]},{"num":2,"time":"18:25–19:10","subject":"Обработка металлов резанием, станки и инструменты","teachers":["Грачев"]},{"num":3,"time":"19:20–20:05","subject":"Математические методы в проф.деят-ти","teachers":["Галалетдинова"]},{"num":4,"time":"20:15–21:00","subject":"РЯКР","teachers":["Шульгина"]}]},{"groups":["3543А"],"spec":"13.02.13","lessons":[{"num":1,"time":"17:30–18:15","subject":"Измерительная техника","teachers":["Городнова"]},{"num":2,"time":"18:25–19:10","subject":"Тат.яз в проф.деят-ти","teachers":["Гиззатуллина","Шарифуллина"]},{"num":3,"time":"19:20–20:05","subject":"РЯКР","teachers":["Шульгина"]},{"num":4,"time":"20:15–21:00","subject":"Прикладная математика","teachers":["Галалетдинова"]}]},{"groups":["3513А","3515А","3516А"],"spec":"15.02.18","lessons":[{"num":1,"time":"17:30–18:15","subject":"Основы финансовой грамотности","teachers":["Алексеева"]},{"num":2,"time":"18:25–19:10","subject":"РЯКР","teachers":["Шульгина"]},{"num":3,"time":"19:20–20:05","subject":"Тат.яз в проф.деят-ти","teachers":["Гиззатуллина","Шарифуллина"]},{"num":4,"time":"20:15–21:00","subject":"Процессы формообразования и инструмент","teachers":["Нигматуллин"]}]}]};
+var AVATARS = ["#1E4FD8", "#0E9F6E", "#7C3AED", "#E8590C", "#D6336C", "#0B7285", "#5C7CFA", "#2F9E44"];
+try { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; } catch (e) {}
+
+function load(k, d) { try { var v = localStorage.getItem("knn." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+function save(k, v) { try { localStorage.setItem("knn." + k, JSON.stringify(v)); } catch (e) {} }
+
+var NATIVE = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.knn);
+function native(msg) { try { window.webkit.messageHandlers.knn.postMessage(msg); } catch (e) {} }
+
+var state = { auto: load("auto", true), tab: "s", fio: load("fio", ""), group: load("group", ""), sheets: load("sheets", []), favs: load("favs", []), q: "", loading: false, day: null, problem: null, lastLoaded: [] };
+
+var bySurname = {}, known = {};
+TEACHERS.forEach(function (t) {
+  var s = t[0].split(" ")[0];
+  known[s] = 1;
+  var k = s.toLowerCase().replace(/ё/g, "е");
+  (bySurname[k] = bySurname[k] || []).push(t);
+});
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+function color(n) { return AVATARS[hash(n) % AVATARS.length]; }
+function initials(n) { var w = n.trim().split(/\s+/); return (w[0][0] + (w[1] ? w[1][0] : "")).toUpperCase(); }
+
+function toast(msg) {
+  var t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 3500);
+}
+
+function lookup(written) {
+  var w = written.trim().split(/\s+/);
+  var c = bySurname[w[0].toLowerCase().replace(/ё/g, "е")] || [];
+  if (w.length > 1 && c.length > 1) {
+    var ini = w.slice(1).join("").replace(/[^А-ЯЁа-яё]/g, "").toUpperCase();
+    var f = c.filter(function (t) { var n = t[0].split(" "); return ((n[1] || "")[0] + (n[2] || "")[0]).toUpperCase().indexOf(ini) === 0; });
+    if (f.length) return f;
+  }
+  return c;
+}
+
+function dayKey(d) { var p = d.split("."); if (p.length !== 3) return 0; var y = +p[2]; if (y < 100) y += 2000; return y * 10000 + (+p[1]) * 100 + (+p[0]); }
+function todayKey(plus) { var d = new Date(); d.setDate(d.getDate() + (plus || 0)); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+function mins(t) { var m = /(\d{1,2}):(\d{2})\D+(\d{1,2}):(\d{2})/.exec(t); return m ? [m[1] * 60 + +m[2], m[3] * 60 + +m[4]] : null; }
+
+function allSheets() { return state.sheets.length ? state.sheets : [SAMPLE]; }
+function isSample() { return !state.sheets.length; }
+
+function daysForGroup() {
+  return allSheets().filter(function (sh) { return Sched.find(sh, state.group); }).sort(function (a, b) { return dayKey(a.date) - dayKey(b.date); });
+}
+
+function findSheet() {
+  if (!state.group) return null;
+  if (state.day) { var sel = allSheets().filter(function (sh) { return sh.date === state.day && Sched.find(sh, state.group); })[0]; if (sel) return sel; }
+  var today = todayKey(0), best = null;
+  allSheets().forEach(function (sh) {
+    if (!Sched.find(sh, state.group)) return;
+    var k = dayKey(sh.date);
+    if (!best) { best = sh; return; }
+    var bk = dayKey(best.date);
+    if (bk === today) return;
+    if (k === today || (k > today && (bk < today || k < bk))) best = sh;
+  });
+  return best;
+}
+
+function knownGroups() {
+  var set = {}, sh = state.lastLoaded.length ? state.lastLoaded : allSheets(), d = sh[0] ? sh[0].date : "";
+  sh.forEach(function (s) { if (s.date === d) s.columns.forEach(function (c) { c.groups.forEach(function (g) { set[g] = 1; }); }); });
+  return Object.keys(set).sort();
+}
+
+/* ---------- header ---------- */
+function renderHeader() {
+  $("groupBtn").textContent = (state.group || "Группа") + " ▾";
+  $("whoBtn").textContent = state.fio ? state.fio + " ✎" : "Нажми, чтобы ввести ФИО ✎";
+  $("tabS").setAttribute("aria-selected", state.tab === "s");
+  $("tabT").setAttribute("aria-selected", state.tab === "t");
+}
+
+/* ---------- schedule ---------- */
+function joinLink(url, label, title) {
+  return '<a class="go" href="' + esc(url) + '" target="_blank" rel="noopener" data-join="1" data-title="' + esc(title || "") + '">' + (label || "Войти") + "</a>";
+}
+
+function teacherRows(l) {
+  if (!l.teachers.length) return '<div class="tn"><small>Преподаватель не указан</small></div>';
+  return l.teachers.map(function (w) {
+    var cand = lookup(w);
+    if (!cand.length) return '<div class="trow"><span class="av" style="background:var(--muted)">' + esc(initials(w)) + '</span><div class="tn">' + esc(w) + "<small>ссылки нет в списке</small></div></div>";
+    return cand.map(function (t) {
+      return '<div class="trow"><span class="av" style="background:' + color(t[0]) + '">' + esc(initials(t[0])) + '</span><div class="tn">' + esc(t[0]) +
+        (cand.length > 1 ? "<small>однофамилец, проверь, кто ведёт</small>" : "") + "</div>" + joinLink(t[1], "Войти", l.subject || t[0]) + "</div>";
+    }).join("");
+  }).join("");
+}
+
+function renderSchedule(v) {
+  var h = "";
+  if (state.loading) { v.innerHTML = '<div class="empty"><b>Читаю расписание…</b><span>Секунду</span></div>'; return; }
+  if (state.problem) h += '<div class="warn">' + esc(state.problem) + '</div><div class="row2"><label class="btn primary" for="pdfInput">Другой PDF</label><button class="btn" type="button" data-act="hide">Скрыть</button></div>';
+  if (!state.group) {
+    h += '<div class="empty"><b>Выбери свою группу</b><span>Покажу только твои пары</span></div>';
+    h += '<button class="btn primary" type="button" data-act="group">Выбрать группу</button>';
+    h += '<label class="btn" for="pdfInput">Загрузить PDF расписания</label>';
+    v.innerHTML = h + howto(); return;
+  }
+  var sh = findSheet();
+  if (!sh) {
+    var last = state.lastLoaded[0] || allSheets()[0], gl = knownGroups().slice(0, 12).join(", ");
+    h += '<div class="empty"><b>Группы ' + esc(state.group) + " нет в расписании</b><span>В PDF на " + esc(last.date) + (last.course ? " (" + esc(last.course) + " курс)" : "") +
+      " есть группы: " + esc(gl) + ". Загрузи PDF своего курса или выбери другую группу.</span></div>";
+    h += '<label class="btn primary" for="pdfInput">Загрузить PDF</label><button class="btn" type="button" data-act="group">Сменить группу</button>';
+    v.innerHTML = h + howto(); return;
+  }
+  var col = Sched.find(sh, state.group), k = dayKey(sh.date), isToday = k === todayKey(0);
+  var days = daysForGroup();
+  if (days.length > 1) {
+    var wds = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    h += '<div class="days">' + days.map(function (d) {
+      var dk = dayKey(d.date), lab = d.date.slice(0, 5);
+      var dt = new Date(Math.floor(dk / 10000), Math.floor(dk / 100) % 100 - 1, dk % 100);
+      if (!isNaN(dt)) lab = wds[dt.getDay()] + " " + lab;
+      if (dk === todayKey(0)) lab = "Сегодня"; else if (dk === todayKey(1)) lab = "Завтра";
+      return '<button type="button" data-day="' + esc(d.date) + '" aria-pressed="' + (d === sh) + '">' + esc(lab) + "</button>";
+    }).join("") + "</div>";
+  }
+  if (isSample()) h += '<div class="sample">Это пример: расписание 2 курса на 28.10.2026. Загрузи свой PDF, и здесь будут твои пары.</div>';
+  var badge = isToday ? '<span class="badge today">Сегодня</span>' : k === todayKey(1) ? '<span class="badge">Завтра</span>' : k < todayKey(0) ? '<span class="badge">Прошло</span>' : "";
+  var wd = sh.weekday ? sh.weekday[0].toUpperCase() + sh.weekday.slice(1) + ", " : "";
+  var meta = "Группа " + esc(state.group) + (sh.course ? " · " + esc(sh.course) + " курс" : "") + (col.spec ? " · " + esc(col.spec) : "") + " · пар: " + col.lessons.length;
+  h += '<section class="daycard"><div class="d"><h2>' + esc(wd + sh.date) + "</h2>" + badge + "</div><p>" + meta + "</p></section>";
+  if (!col.lessons.length) h += '<div class="empty"><b>Пар нет</b><span>Отдыхай</span></div>';
+
+  var now = -1, nextMarked = false;
+  if (isToday) { var d = new Date(); now = d.getHours() * 60 + d.getMinutes(); }
+  col.lessons.forEach(function (l) {
+    var m = mins(l.time), cls = "", st = "";
+    if (now >= 0 && m) {
+      if (now >= m[0] && now < m[1]) { cls = "live"; st = "Идёт сейчас"; nextMarked = true; }
+      else if (now >= m[1]) cls = "done";
+      else if (!nextMarked) { cls = "next"; st = "Следующая"; nextMarked = true; }
+    }
+    h += '<article class="card lesson ' + cls + '"><div class="lt"><span class="num">' + l.num + '</span><span class="time">' + esc(l.time.replace("–", " – ")) + "</span>" +
+      (st ? '<span class="badge st">' + st + "</span>" : "") + '</div><div class="subj">' + esc(l.subject || "Пара") + "</div>" + teacherRows(l) + "</article>";
+  });
+  h += '<div class="row2"><label class="btn" for="pdfInput">Загрузить PDF</label><button class="btn" type="button" data-act="group">Сменить группу</button></div>';
+  if (NATIVE) h += '<button class="btn" type="button" data-act="auto">' + (state.auto ? "▶ Автовход на пары: включён" : "⏸ Автовход на пары: выключен") + "</button>";
+  h += '<p class="hint">' + (NATIVE ? "Перед каждой парой придёт уведомление. Нажми на него, и приложение само войдёт с твоим ФИО." : "«Войти» копирует твоё ФИО и открывает конференцию.") + " Даты и время сверяй с официальным расписанием.</p>";
+  v.innerHTML = h + howto();
+}
+
+function howto() {
+  if (NATIVE) return "";
+  return '<details class="card howto"><summary>Как поставить на iPhone</summary><ol>' +
+    "<li>Открой эту страницу в Safari.</li><li>Нажми «Поделиться» (квадрат со стрелкой вверх).</li>" +
+    "<li>Выбери «На экран „Домой“», затем «Добавить».</li><li>PDF из MAX сохрани в «Файлы» и загружай кнопкой «Загрузить PDF».</li></ol></details>";
+}
+
+/* ---------- teachers ---------- */
+function renderTeachers(v) {
+  var keep = document.activeElement && document.activeElement.id === "q";
+  var q = state.q.toLowerCase().replace(/ё/g, "е").trim().split(/\s+/).filter(Boolean);
+  var fav = [], rest = [];
+  TEACHERS.forEach(function (t) {
+    var n = t[0].toLowerCase().replace(/ё/g, "е");
+    if (!q.every(function (p) { return n.indexOf(p) >= 0; })) return;
+    (state.favs.indexOf(t[1]) >= 0 ? fav : rest).push(t);
+  });
+  function card(t) {
+    var w = t[0].split(" "), on = state.favs.indexOf(t[1]) >= 0;
+    return '<div class="card tcard"><span class="av" style="background:' + color(t[0]) + '">' + esc(initials(t[0])) + '</span><div class="tn"><b>' + esc(w[0]) +
+      "</b><small>" + esc(w.slice(1).join(" ")) + '</small></div><button class="star" type="button" aria-label="Избранное" aria-pressed="' + on + '" data-fav="' + esc(t[1]) + '">★</button>' + joinLink(t[1], "Войти", t[0]) + "</div>";
+  }
+  var h = '<input class="search" id="q" type="search" placeholder="Поиск преподавателя" autocomplete="off" value="' + esc(state.q) + '">';
+  if (!fav.length && !rest.length) h += '<div class="empty"><b>Никого не нашли</b><span>Попробуй ввести только фамилию</span></div>';
+  if (fav.length) h += '<div class="label">Избранные</div>' + fav.map(card).join("");
+  if (rest.length) h += '<div class="label">' + (fav.length ? "Остальные" : "Преподаватели") + " · " + rest.length + "</div>" + rest.map(card).join("");
+  v.innerHTML = h;
+  if (keep) { var i = $("q"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+}
+
+function render() {
+  renderHeader();
+  var v = $("view");
+  if (state.tab === "s") renderSchedule(v); else renderTeachers(v);
+}
+
+/* ---------- sheets (bottom panels) ---------- */
+function openSheet(html) { $("panel").innerHTML = html; $("sheet").hidden = false; }
+function closeSheet() { $("sheet").hidden = true; }
+
+function groupSheet() {
+  var gs = knownGroups();
+  openSheet('<h3>Твоя группа</h3><p>Группы из ' + (isSample() ? "примера расписания" : "загруженного расписания") + ". Если твоей нет, впиши номер так, как он написан в PDF.</p>" +
+    '<div class="groups">' + gs.map(function (g) { return '<button type="button" data-g="' + esc(g) + '" aria-pressed="' + (Sched.normGroup(g) === Sched.normGroup(state.group)) + '">' + esc(g) + "</button>"; }).join("") + "</div>" +
+    '<form id="gForm" class="row2"><input class="search" id="gIn" placeholder="например, 1515А" value="' + esc(state.group) + '" autocapitalize="characters"><button class="btn primary" type="submit">Сохранить</button></form>' +
+    '<button class="btn" type="button" data-act="close">Отмена</button>');
+}
+
+function nameSheet() {
+  openSheet('<h3>Твоё ФИО</h3><p>Кнопка «Войти» скопирует его, останется вставить в поле имени на странице конференции.</p>' +
+    '<form id="nForm" style="display:grid;gap:10px"><input class="search" id="nIn" placeholder="Фамилия Имя Отчество" autocomplete="name" value="' + esc(state.fio) + '">' +
+    '<button class="btn primary" type="submit">Сохранить</button></form><button class="btn" type="button" data-act="close">Отмена</button>');
+  setTimeout(function () { var i = $("nIn"); if (i) i.focus(); }, 50);
+}
+
+function setGroup(g) { state.group = g.replace(/\s+/g, "").toUpperCase(); save("group", state.group); closeSheet(); state.tab = "s"; render(); syncNative(); }
+
+/* ---------- PDF ---------- */
+function storeSheet(sh) {
+  state.sheets = state.sheets.filter(function (o) { return !(o.date === sh.date && o.course === sh.course); });
+  state.sheets.push(sh);
+  state.sheets.sort(function (a, b) { return dayKey(b.date) - dayKey(a.date); });
+  state.sheets = state.sheets.slice(0, 12);
+}
+
+function diagnose(text, chars, pages) {
+  if (chars < 20) return "В этом PDF нет текста: похоже, это картинка или скан. Такой файл прочитать нельзя. Попроси расписание в виде обычного PDF из Excel.";
+  var times = (text.match(Sched.TIME_G) || []).length;
+  var groups = Sched.groupTokens(text.replace(/\n/g, " ")).filter(function (g, i, a) { return a.indexOf(g) === i; }).slice(0, 8);
+  var b = "Не получилось найти таблицу пар в этом PDF.\nСтраниц: " + pages + ". Время пар (вида 08.00-09.30): " + (times ? "найдено " + times : "не найдено") + ".";
+  if (groups.length) b += "\nПохоже на номера групп: " + groups.join(", ");
+  if (!times) b += "\nВ таблице должно быть время пар, иначе непонятно, где какая пара.";
+  return b;
+}
+
+function readPdf(file) { readPdfBuffer(file.arrayBuffer()); }
+
+window.knnOpenPdfBase64 = function (b64) {
+  var bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  readPdfBuffer(Promise.resolve(bytes.buffer));
+};
+
+/** The pairs of the chosen group, for the iOS app to schedule notifications and auto-join. */
+function syncNative() {
+  if (!NATIVE) return;
+  var items = [];
+  if (state.group) state.sheets.forEach(function (sh) {
+    var col = Sched.find(sh, state.group), dp = sh.date.split(".");
+    if (!col || dp.length !== 3) return;
+    var y = +dp[2]; if (y < 100) y += 2000;
+    col.lessons.forEach(function (l) {
+      var m = mins(l.time); if (!m) return;
+      var start = new Date(y, +dp[1] - 1, +dp[0], Math.floor(m[0] / 60), m[0] % 60).getTime();
+      var end = new Date(y, +dp[1] - 1, +dp[0], Math.floor(m[1] / 60), m[1] % 60).getTime();
+      var url = null, names = [];
+      l.teachers.forEach(function (w) { var c = lookup(w); if (c.length === 1) { names.push(c[0][0]); if (!url) url = c[0][1]; } else names.push(w); });
+      items.push({ start: start, end: end, title: l.num + " пара в " + l.time.split("–")[0] + (l.subject ? " · " + l.subject : ""),
+        body: names.length ? names.join(", ") + (url ? " · нажми, чтобы войти" : "") : "Открой расписание", url: url, joinTitle: l.subject || names.join(", ") });
+    });
+  });
+  native({ type: "plan", fio: state.fio, auto: state.auto, items: items });
+}
+
+function readPdfBuffer(bufPromise) {
+  var chars = 0, text = "", pages = 0;
+  state.loading = true; state.tab = "s"; render();
+  bufPromise.then(function (buf) {
+    return pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  }).then(function (doc) {
+    var found = [], p = Promise.resolve();
+    pages = doc.numPages;
+    for (var n = 1; n <= doc.numPages; n++) (function (n) {
+      p = p.then(function () { return doc.getPage(n); }).then(function (page) {
+        var vp = page.getViewport({ scale: 1 });
+        return Promise.all([page.getTextContent(), page.getOperatorList().catch(function () { return null; })]).then(function (r) {
+          var glyphs = Sched.glyphsFromContent(r[0], vp), segs = [];
+          chars += glyphs.length;
+          text += r[0].items.map(function (it) { return it.str; }).join(" ") + "\n";
+          try { if (r[1]) segs = Sched.bordersFromOps(r[1], vp); } catch (e) {}
+          var sh = Sched.parse(glyphs, segs, known);
+          if (!sh.date) { var t = new Date(); sh.date = ("0" + t.getDate()).slice(-2) + "." + ("0" + (t.getMonth() + 1)).slice(-2) + "." + t.getFullYear(); }
+          if (sh.columns.some(function (col) { return col.lessons.length; })) found.push(sh);
+        });
+      });
+    })(n);
+    return p.then(function () { return found; });
+  }).then(function (found) {
+    state.loading = false;
+    state.lastLoaded = found;
+    if (!found.length) { state.problem = diagnose(text, chars, pages); render(); return; }
+    state.problem = null;
+    found.forEach(storeSheet); save("sheets", state.sheets); syncNative();
+    var mine = found.filter(function (sh) { return state.group && Sched.find(sh, state.group); })[0];
+    state.day = (mine || found[0]).date;
+    render();
+    if (!state.group) groupSheet();
+    else if (!mine) toast("Твоей группы " + state.group + " нет в этом PDF");
+    else toast("Расписание на " + state.day + " загружено");
+  }).catch(function (e) {
+    state.loading = false; render(); toast("Не удалось прочитать PDF: " + (e && e.message ? e.message : "ошибка"));
+  });
+}
+
+/* ---------- events ---------- */
+$("tabS").onclick = function () { state.tab = "s"; render(); };
+$("tabT").onclick = function () { state.tab = "t"; render(); };
+$("groupBtn").onclick = groupSheet;
+$("whoBtn").onclick = nameSheet;
+$("pdfInput").onchange = function () { var f = this.files && this.files[0]; if (f) readPdf(f); this.value = ""; };
+$("sheet").addEventListener("click", function (e) {
+  if (e.target === $("sheet") || e.target.closest("[data-act=close]")) return closeSheet();
+  var g = e.target.closest("[data-g]"); if (g) setGroup(g.getAttribute("data-g"));
+});
+$("sheet").addEventListener("submit", function (e) {
+  e.preventDefault();
+  if (e.target.id === "gForm") { var v = $("gIn").value.trim(); if (v) setGroup(v); }
+  if (e.target.id === "nForm") { state.fio = $("nIn").value.trim().replace(/\s+/g, " "); save("fio", state.fio); closeSheet(); render(); syncNative(); }
+});
+$("view").addEventListener("click", function (e) {
+  if (e.target.closest("[data-act=group]")) return groupSheet();
+  if (e.target.closest("[data-act=hide]")) { state.problem = null; return render(); }
+  if (e.target.closest("[data-act=auto]")) { state.auto = !state.auto; save("auto", state.auto); render(); syncNative(); return toast(state.auto ? "Буду заходить на пары сам" : "Автовход выключен"); }
+  var dd = e.target.closest("[data-day]"); if (dd) { state.day = dd.getAttribute("data-day"); return render(); }
+  var f = e.target.closest("[data-fav]");
+  if (f) { var u = f.getAttribute("data-fav"), i = state.favs.indexOf(u); if (i >= 0) state.favs.splice(i, 1); else state.favs.push(u); save("favs", state.favs); render(); return; }
+  var a = e.target.closest("[data-join]");
+  if (a && NATIVE) {
+    e.preventDefault();
+    if (!state.fio) { toast("Сначала введи ФИО, с ним приложение будет входить само"); nameSheet(); return; }
+    native({ type: "join", url: a.getAttribute("href"), title: a.getAttribute("data-title") || "Пара", fio: state.fio });
+    return;
+  }
+  if (a) {
+    if (!state.fio) { toast("Введи ФИО в шапке, чтобы оно копировалось само"); return; }
+    try { navigator.clipboard.writeText(state.fio).then(function () { toast("ФИО скопировано, вставь его в поле «Имя»"); }, function () { toast("Твоё ФИО: " + state.fio); }); }
+    catch (err) { toast("Твоё ФИО: " + state.fio); }
+  }
+});
+$("view").addEventListener("input", function (e) { if (e.target.id === "q") { state.q = e.target.value; renderTeachers($("view")); } });
+document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
+
+if (!state.group && isSample()) state.group = "";
+render();
+syncNative();
+if (NATIVE && !state.fio) setTimeout(nameSheet, 400);
+setInterval(function () { if (state.tab === "s" && $("sheet").hidden) render(); }, 60000);
+</script>
+
+</body>
+</html>

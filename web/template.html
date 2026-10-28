@@ -1,0 +1,473 @@
+<title>КНН пары</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@600&display=swap">
+<style>
+/* Layout: blue header band with tabs over a single column of cards, mobile-first, max 640px */
+:root {
+  --brand: #1E4FD8; --brand-2: #4F7DF5; --brand-ink: #15307F;
+  --bg: #F2F4F9; --card: #FFFFFF; --fg: #171C2B; --muted: #6B7385; --line: #E3E7EF; --soft: #E8EEFD;
+  --live: #0E9F6E; --live-soft: #E3F6EE; --star: #E8A100; --warn-bg: #FFF3D6; --warn-fg: #7A4B00;
+  --on-brand: #FFFFFF; --shadow: 0 1px 2px rgba(23,28,43,.06), 0 4px 14px rgba(30,79,216,.06);
+  --f-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --f-body: "Golos Text", -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --brand: #5B86FF; --brand-2: #2B4FC0; --brand-ink: #0F1F57;
+  --bg: #0E1220; --card: #171C2E; --fg: #E8ECF7; --muted: #98A0B8; --line: #283048; --soft: #1E2A4D;
+  --live: #3CCB94; --live-soft: #12352A; --star: #FFC23D; --warn-bg: #3A2C0E; --warn-fg: #FFD98A;
+  --on-brand: #FFFFFF; --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --brand: #5B86FF; --brand-2: #2B4FC0; --brand-ink: #0F1F57;
+  --bg: #0E1220; --card: #171C2E; --fg: #E8ECF7; --muted: #98A0B8; --line: #283048; --soft: #1E2A4D;
+  --live: #3CCB94; --live-soft: #12352A; --star: #FFC23D; --warn-bg: #3A2C0E; --warn-fg: #FFD98A;
+  --on-brand: #FFFFFF; --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.4; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--brand); }
+button, input, label.btn { font: inherit; }
+.wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.top { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: var(--on-brand); border-radius: 0 0 26px 26px; }
+header.top .wrap { padding-block: 18px 16px; display: grid; gap: 14px; }
+.titlerow { display: flex; align-items: center; gap: 12px; }
+.titlerow h1 { font-family: var(--f-display); font-weight: 600; font-size: 24px; margin: 0; flex: 1; letter-spacing: -.01em; }
+.chip { border: 1.5px solid rgba(255,255,255,.55); background: rgba(255,255,255,.18); color: var(--on-brand); border-radius: 999px; padding: 7px 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.who { background: none; border: 0; color: rgba(255,255,255,.88); padding: 0; text-align: left; cursor: pointer; font-size: 14px; }
+.seg { display: flex; background: rgba(255,255,255,.2); border-radius: 14px; padding: 4px; }
+.seg button { flex: 1; border: 0; background: none; color: rgba(255,255,255,.92); font-weight: 600; padding: 9px 0; border-radius: 11px; cursor: pointer; }
+.seg button[aria-selected="true"] { background: #FFFFFF; color: #1E4FD8; }
+:focus-visible { outline: 2.5px solid var(--brand); outline-offset: 2px; }
+header :focus-visible { outline-color: #FFFFFF; }
+
+main .wrap { padding-block: 16px 40px; display: grid; gap: 10px; }
+.card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 14px; }
+.daycard { background: linear-gradient(135deg, var(--brand-ink), var(--brand)); color: var(--on-brand); border-radius: 20px; padding: 16px 18px; display: grid; gap: 4px; }
+.daycard .d { display: flex; align-items: center; gap: 10px; }
+.daycard h2 { margin: 0; font-size: 20px; font-weight: 700; flex: 1; text-wrap: balance; }
+.daycard p { margin: 0; opacity: .88; font-size: 14px; }
+.badge { border-radius: 10px; padding: 3px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.daycard .badge { background: #FFFFFF; color: #1E4FD8; }
+.daycard .badge.today { color: #0E9F6E; }
+.sample { background: var(--warn-bg); color: var(--warn-fg); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+
+.lesson { display: grid; gap: 8px; }
+.lesson.live { outline: 2px solid var(--live); }
+.lesson.next { outline: 1.5px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.lesson.done { opacity: .55; }
+.lt { display: flex; align-items: center; gap: 10px; }
+.num { width: 32px; height: 32px; border-radius: 50%; background: var(--soft); color: var(--brand); display: grid; place-items: center; font-weight: 700; flex: none; }
+.live .num { background: var(--live); color: #FFFFFF; }
+.time { font-weight: 600; flex: 1; font-variant-numeric: tabular-nums; }
+.st { background: var(--soft); color: var(--brand); }
+.live .st { background: var(--live-soft); color: var(--live); }
+.subj { font-size: 17px; font-weight: 600; line-height: 1.3; text-wrap: balance; }
+.trow { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #FFFFFF; font-size: 12px; font-weight: 700; flex: none; }
+.tn { flex: 1; min-width: 0; }
+.tn small { display: block; color: var(--muted); font-size: 12px; }
+a.go { background: var(--brand); color: #FFFFFF; text-decoration: none; font-weight: 600; padding: 9px 16px; border-radius: 12px; flex: none; }
+a.go:active { transform: scale(.97); }
+
+.btn { display: flex; justify-content: center; align-items: center; gap: 8px; border-radius: 14px; padding: 13px 14px; font-weight: 600; cursor: pointer; text-align: center; border: 1.5px solid color-mix(in srgb, var(--brand) 35%, transparent); background: var(--card); color: var(--brand); }
+.btn.primary { background: var(--brand); color: #FFFFFF; border-color: var(--brand); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.empty { text-align: center; padding: 30px 12px; display: grid; gap: 6px; }
+.empty b { font-size: 17px; }
+.empty span, .hint { color: var(--muted); font-size: 14px; }
+.hint { text-align: center; font-size: 12px; padding-top: 6px; }
+.label { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 12px 4px 0; }
+
+.search { width: 100%; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 14px; padding: 13px 14px; font-size: 16px; }
+.tcard { display: flex; align-items: center; gap: 12px; }
+.tcard .av { width: 42px; height: 42px; font-size: 15px; }
+.tcard .tn b { display: block; font-weight: 600; }
+.star { background: none; border: 0; font-size: 22px; color: var(--line); cursor: pointer; padding: 4px 6px; }
+.star[aria-pressed="true"] { color: var(--star); }
+
+.sheet { position: fixed; inset: 0; background: rgba(10,14,30,.45); display: grid; align-items: end; z-index: 20; }
+.sheet .panel { background: var(--card); border-radius: 22px 22px 0 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 12px; max-height: 80vh; overflow: auto; max-width: 640px; width: 100%; margin: 0 auto; }
+.panel h3 { margin: 0; font-size: 18px; }
+.panel p { margin: 0; color: var(--muted); font-size: 14px; }
+.groups { display: flex; flex-wrap: wrap; gap: 8px; }
+.groups button { border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+.groups button[aria-pressed="true"] { border-color: var(--brand); color: var(--brand); }
+.days { display: flex; gap: 8px; overflow-x: auto; padding: 1px 1px 2px; scrollbar-width: none; }
+.days::-webkit-scrollbar { display: none; }
+.days button { flex: none; border: 1.5px solid color-mix(in srgb, var(--brand) 35%, transparent); background: var(--card); color: var(--brand); border-radius: 12px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+.days button[aria-pressed="true"] { background: var(--brand); color: #FFFFFF; border-color: var(--brand); }
+.warn { background: var(--warn-bg); color: var(--warn-fg); border-radius: 14px; padding: 12px 14px; font-size: 14px; white-space: pre-line; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 11px 16px; border-radius: 14px; font-size: 14px; z-index: 30; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.2); }
+details.howto summary { cursor: pointer; font-weight: 600; }
+details.howto ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) { .lesson, .tcard { transition: transform .12s; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="titlerow">
+      <h1>КНН пары</h1>
+      <button class="chip" id="groupBtn" type="button">Группа ▾</button>
+    </div>
+    <button class="who" id="whoBtn" type="button">Нажми, чтобы ввести ФИО ✎</button>
+    <div class="seg" role="tablist">
+      <button type="button" role="tab" id="tabS" aria-selected="true">Расписание</button>
+      <button type="button" role="tab" id="tabT" aria-selected="false">Преподаватели</button>
+    </div>
+  </div>
+</header>
+<main><div class="wrap" id="view"></div></main>
+<input type="file" id="pdfInput" accept="application/pdf,.pdf" hidden>
+<div class="toast" id="toast" hidden></div>
+<div class="sheet" id="sheet" hidden><div class="panel" id="panel"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script>
+__PARSER__
+</script>
+<script>
+var TEACHERS = __TEACHERS__;
+var SAMPLE = __SAMPLE__;
+var AVATARS = ["#1E4FD8", "#0E9F6E", "#7C3AED", "#E8590C", "#D6336C", "#0B7285", "#5C7CFA", "#2F9E44"];
+try { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; } catch (e) {}
+
+function load(k, d) { try { var v = localStorage.getItem("knn." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+function save(k, v) { try { localStorage.setItem("knn." + k, JSON.stringify(v)); } catch (e) {} }
+
+var NATIVE = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.knn);
+function native(msg) { try { window.webkit.messageHandlers.knn.postMessage(msg); } catch (e) {} }
+
+var state = { auto: load("auto", true), tab: "s", fio: load("fio", ""), group: load("group", ""), sheets: load("sheets", []), favs: load("favs", []), q: "", loading: false, day: null, problem: null, lastLoaded: [] };
+
+var bySurname = {}, known = {};
+TEACHERS.forEach(function (t) {
+  var s = t[0].split(" ")[0];
+  known[s] = 1;
+  var k = s.toLowerCase().replace(/ё/g, "е");
+  (bySurname[k] = bySurname[k] || []).push(t);
+});
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+function color(n) { return AVATARS[hash(n) % AVATARS.length]; }
+function initials(n) { var w = n.trim().split(/\s+/); return (w[0][0] + (w[1] ? w[1][0] : "")).toUpperCase(); }
+
+function toast(msg) {
+  var t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 3500);
+}
+
+function lookup(written) {
+  var w = written.trim().split(/\s+/);
+  var c = bySurname[w[0].toLowerCase().replace(/ё/g, "е")] || [];
+  if (w.length > 1 && c.length > 1) {
+    var ini = w.slice(1).join("").replace(/[^А-ЯЁа-яё]/g, "").toUpperCase();
+    var f = c.filter(function (t) { var n = t[0].split(" "); return ((n[1] || "")[0] + (n[2] || "")[0]).toUpperCase().indexOf(ini) === 0; });
+    if (f.length) return f;
+  }
+  return c;
+}
+
+function dayKey(d) { var p = d.split("."); if (p.length !== 3) return 0; var y = +p[2]; if (y < 100) y += 2000; return y * 10000 + (+p[1]) * 100 + (+p[0]); }
+function todayKey(plus) { var d = new Date(); d.setDate(d.getDate() + (plus || 0)); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+function mins(t) { var m = /(\d{1,2}):(\d{2})\D+(\d{1,2}):(\d{2})/.exec(t); return m ? [m[1] * 60 + +m[2], m[3] * 60 + +m[4]] : null; }
+
+function allSheets() { return state.sheets.length ? state.sheets : [SAMPLE]; }
+function isSample() { return !state.sheets.length; }
+
+function daysForGroup() {
+  return allSheets().filter(function (sh) { return Sched.find(sh, state.group); }).sort(function (a, b) { return dayKey(a.date) - dayKey(b.date); });
+}
+
+function findSheet() {
+  if (!state.group) return null;
+  if (state.day) { var sel = allSheets().filter(function (sh) { return sh.date === state.day && Sched.find(sh, state.group); })[0]; if (sel) return sel; }
+  var today = todayKey(0), best = null;
+  allSheets().forEach(function (sh) {
+    if (!Sched.find(sh, state.group)) return;
+    var k = dayKey(sh.date);
+    if (!best) { best = sh; return; }
+    var bk = dayKey(best.date);
+    if (bk === today) return;
+    if (k === today || (k > today && (bk < today || k < bk))) best = sh;
+  });
+  return best;
+}
+
+function knownGroups() {
+  var set = {}, sh = state.lastLoaded.length ? state.lastLoaded : allSheets(), d = sh[0] ? sh[0].date : "";
+  sh.forEach(function (s) { if (s.date === d) s.columns.forEach(function (c) { c.groups.forEach(function (g) { set[g] = 1; }); }); });
+  return Object.keys(set).sort();
+}
+
+/* ---------- header ---------- */
+function renderHeader() {
+  $("groupBtn").textContent = (state.group || "Группа") + " ▾";
+  $("whoBtn").textContent = state.fio ? state.fio + " ✎" : "Нажми, чтобы ввести ФИО ✎";
+  $("tabS").setAttribute("aria-selected", state.tab === "s");
+  $("tabT").setAttribute("aria-selected", state.tab === "t");
+}
+
+/* ---------- schedule ---------- */
+function joinLink(url, label, title) {
+  return '<a class="go" href="' + esc(url) + '" target="_blank" rel="noopener" data-join="1" data-title="' + esc(title || "") + '">' + (label || "Войти") + "</a>";
+}
+
+function teacherRows(l) {
+  if (!l.teachers.length) return '<div class="tn"><small>Преподаватель не указан</small></div>';
+  return l.teachers.map(function (w) {
+    var cand = lookup(w);
+    if (!cand.length) return '<div class="trow"><span class="av" style="background:var(--muted)">' + esc(initials(w)) + '</span><div class="tn">' + esc(w) + "<small>ссылки нет в списке</small></div></div>";
+    return cand.map(function (t) {
+      return '<div class="trow"><span class="av" style="background:' + color(t[0]) + '">' + esc(initials(t[0])) + '</span><div class="tn">' + esc(t[0]) +
+        (cand.length > 1 ? "<small>однофамилец, проверь, кто ведёт</small>" : "") + "</div>" + joinLink(t[1], "Войти", l.subject || t[0]) + "</div>";
+    }).join("");
+  }).join("");
+}
+
+function renderSchedule(v) {
+  var h = "";
+  if (state.loading) { v.innerHTML = '<div class="empty"><b>Читаю расписание…</b><span>Секунду</span></div>'; return; }
+  if (state.problem) h += '<div class="warn">' + esc(state.problem) + '</div><div class="row2"><label class="btn primary" for="pdfInput">Другой PDF</label><button class="btn" type="button" data-act="hide">Скрыть</button></div>';
+  if (!state.group) {
+    h += '<div class="empty"><b>Выбери свою группу</b><span>Покажу только твои пары</span></div>';
+    h += '<button class="btn primary" type="button" data-act="group">Выбрать группу</button>';
+    h += '<label class="btn" for="pdfInput">Загрузить PDF расписания</label>';
+    v.innerHTML = h + howto(); return;
+  }
+  var sh = findSheet();
+  if (!sh) {
+    var last = state.lastLoaded[0] || allSheets()[0], gl = knownGroups().slice(0, 12).join(", ");
+    h += '<div class="empty"><b>Группы ' + esc(state.group) + " нет в расписании</b><span>В PDF на " + esc(last.date) + (last.course ? " (" + esc(last.course) + " курс)" : "") +
+      " есть группы: " + esc(gl) + ". Загрузи PDF своего курса или выбери другую группу.</span></div>";
+    h += '<label class="btn primary" for="pdfInput">Загрузить PDF</label><button class="btn" type="button" data-act="group">Сменить группу</button>';
+    v.innerHTML = h + howto(); return;
+  }
+  var col = Sched.find(sh, state.group), k = dayKey(sh.date), isToday = k === todayKey(0);
+  var days = daysForGroup();
+  if (days.length > 1) {
+    var wds = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    h += '<div class="days">' + days.map(function (d) {
+      var dk = dayKey(d.date), lab = d.date.slice(0, 5);
+      var dt = new Date(Math.floor(dk / 10000), Math.floor(dk / 100) % 100 - 1, dk % 100);
+      if (!isNaN(dt)) lab = wds[dt.getDay()] + " " + lab;
+      if (dk === todayKey(0)) lab = "Сегодня"; else if (dk === todayKey(1)) lab = "Завтра";
+      return '<button type="button" data-day="' + esc(d.date) + '" aria-pressed="' + (d === sh) + '">' + esc(lab) + "</button>";
+    }).join("") + "</div>";
+  }
+  if (isSample()) h += '<div class="sample">Это пример: расписание 2 курса на 28.10.2026. Загрузи свой PDF, и здесь будут твои пары.</div>';
+  var badge = isToday ? '<span class="badge today">Сегодня</span>' : k === todayKey(1) ? '<span class="badge">Завтра</span>' : k < todayKey(0) ? '<span class="badge">Прошло</span>' : "";
+  var wd = sh.weekday ? sh.weekday[0].toUpperCase() + sh.weekday.slice(1) + ", " : "";
+  var meta = "Группа " + esc(state.group) + (sh.course ? " · " + esc(sh.course) + " курс" : "") + (col.spec ? " · " + esc(col.spec) : "") + " · пар: " + col.lessons.length;
+  h += '<section class="daycard"><div class="d"><h2>' + esc(wd + sh.date) + "</h2>" + badge + "</div><p>" + meta + "</p></section>";
+  if (!col.lessons.length) h += '<div class="empty"><b>Пар нет</b><span>Отдыхай</span></div>';
+
+  var now = -1, nextMarked = false;
+  if (isToday) { var d = new Date(); now = d.getHours() * 60 + d.getMinutes(); }
+  col.lessons.forEach(function (l) {
+    var m = mins(l.time), cls = "", st = "";
+    if (now >= 0 && m) {
+      if (now >= m[0] && now < m[1]) { cls = "live"; st = "Идёт сейчас"; nextMarked = true; }
+      else if (now >= m[1]) cls = "done";
+      else if (!nextMarked) { cls = "next"; st = "Следующая"; nextMarked = true; }
+    }
+    h += '<article class="card lesson ' + cls + '"><div class="lt"><span class="num">' + l.num + '</span><span class="time">' + esc(l.time.replace("–", " – ")) + "</span>" +
+      (st ? '<span class="badge st">' + st + "</span>" : "") + '</div><div class="subj">' + esc(l.subject || "Пара") + "</div>" + teacherRows(l) + "</article>";
+  });
+  h += '<div class="row2"><label class="btn" for="pdfInput">Загрузить PDF</label><button class="btn" type="button" data-act="group">Сменить группу</button></div>';
+  if (NATIVE) h += '<button class="btn" type="button" data-act="auto">' + (state.auto ? "▶ Автовход на пары: включён" : "⏸ Автовход на пары: выключен") + "</button>";
+  h += '<p class="hint">' + (NATIVE ? "Перед каждой парой придёт уведомление. Нажми на него, и приложение само войдёт с твоим ФИО." : "«Войти» копирует твоё ФИО и открывает конференцию.") + " Даты и время сверяй с официальным расписанием.</p>";
+  v.innerHTML = h + howto();
+}
+
+function howto() {
+  if (NATIVE) return "";
+  return '<details class="card howto"><summary>Как поставить на iPhone</summary><ol>' +
+    "<li>Открой эту страницу в Safari.</li><li>Нажми «Поделиться» (квадрат со стрелкой вверх).</li>" +
+    "<li>Выбери «На экран „Домой“», затем «Добавить».</li><li>PDF из MAX сохрани в «Файлы» и загружай кнопкой «Загрузить PDF».</li></ol></details>";
+}
+
+/* ---------- teachers ---------- */
+function renderTeachers(v) {
+  var keep = document.activeElement && document.activeElement.id === "q";
+  var q = state.q.toLowerCase().replace(/ё/g, "е").trim().split(/\s+/).filter(Boolean);
+  var fav = [], rest = [];
+  TEACHERS.forEach(function (t) {
+    var n = t[0].toLowerCase().replace(/ё/g, "е");
+    if (!q.every(function (p) { return n.indexOf(p) >= 0; })) return;
+    (state.favs.indexOf(t[1]) >= 0 ? fav : rest).push(t);
+  });
+  function card(t) {
+    var w = t[0].split(" "), on = state.favs.indexOf(t[1]) >= 0;
+    return '<div class="card tcard"><span class="av" style="background:' + color(t[0]) + '">' + esc(initials(t[0])) + '</span><div class="tn"><b>' + esc(w[0]) +
+      "</b><small>" + esc(w.slice(1).join(" ")) + '</small></div><button class="star" type="button" aria-label="Избранное" aria-pressed="' + on + '" data-fav="' + esc(t[1]) + '">★</button>' + joinLink(t[1], "Войти", t[0]) + "</div>";
+  }
+  var h = '<input class="search" id="q" type="search" placeholder="Поиск преподавателя" autocomplete="off" value="' + esc(state.q) + '">';
+  if (!fav.length && !rest.length) h += '<div class="empty"><b>Никого не нашли</b><span>Попробуй ввести только фамилию</span></div>';
+  if (fav.length) h += '<div class="label">Избранные</div>' + fav.map(card).join("");
+  if (rest.length) h += '<div class="label">' + (fav.length ? "Остальные" : "Преподаватели") + " · " + rest.length + "</div>" + rest.map(card).join("");
+  v.innerHTML = h;
+  if (keep) { var i = $("q"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+}
+
+function render() {
+  renderHeader();
+  var v = $("view");
+  if (state.tab === "s") renderSchedule(v); else renderTeachers(v);
+}
+
+/* ---------- sheets (bottom panels) ---------- */
+function openSheet(html) { $("panel").innerHTML = html; $("sheet").hidden = false; }
+function closeSheet() { $("sheet").hidden = true; }
+
+function groupSheet() {
+  var gs = knownGroups();
+  openSheet('<h3>Твоя группа</h3><p>Группы из ' + (isSample() ? "примера расписания" : "загруженного расписания") + ". Если твоей нет, впиши номер так, как он написан в PDF.</p>" +
+    '<div class="groups">' + gs.map(function (g) { return '<button type="button" data-g="' + esc(g) + '" aria-pressed="' + (Sched.normGroup(g) === Sched.normGroup(state.group)) + '">' + esc(g) + "</button>"; }).join("") + "</div>" +
+    '<form id="gForm" class="row2"><input class="search" id="gIn" placeholder="например, 1515А" value="' + esc(state.group) + '" autocapitalize="characters"><button class="btn primary" type="submit">Сохранить</button></form>' +
+    '<button class="btn" type="button" data-act="close">Отмена</button>');
+}
+
+function nameSheet() {
+  openSheet('<h3>Твоё ФИО</h3><p>Кнопка «Войти» скопирует его, останется вставить в поле имени на странице конференции.</p>' +
+    '<form id="nForm" style="display:grid;gap:10px"><input class="search" id="nIn" placeholder="Фамилия Имя Отчество" autocomplete="name" value="' + esc(state.fio) + '">' +
+    '<button class="btn primary" type="submit">Сохранить</button></form><button class="btn" type="button" data-act="close">Отмена</button>');
+  setTimeout(function () { var i = $("nIn"); if (i) i.focus(); }, 50);
+}
+
+function setGroup(g) { state.group = g.replace(/\s+/g, "").toUpperCase(); save("group", state.group); closeSheet(); state.tab = "s"; render(); syncNative(); }
+
+/* ---------- PDF ---------- */
+function storeSheet(sh) {
+  state.sheets = state.sheets.filter(function (o) { return !(o.date === sh.date && o.course === sh.course); });
+  state.sheets.push(sh);
+  state.sheets.sort(function (a, b) { return dayKey(b.date) - dayKey(a.date); });
+  state.sheets = state.sheets.slice(0, 12);
+}
+
+function diagnose(text, chars, pages) {
+  if (chars < 20) return "В этом PDF нет текста: похоже, это картинка или скан. Такой файл прочитать нельзя. Попроси расписание в виде обычного PDF из Excel.";
+  var times = (text.match(Sched.TIME_G) || []).length;
+  var groups = Sched.groupTokens(text.replace(/\n/g, " ")).filter(function (g, i, a) { return a.indexOf(g) === i; }).slice(0, 8);
+  var b = "Не получилось найти таблицу пар в этом PDF.\nСтраниц: " + pages + ". Время пар (вида 08.00-09.30): " + (times ? "найдено " + times : "не найдено") + ".";
+  if (groups.length) b += "\nПохоже на номера групп: " + groups.join(", ");
+  if (!times) b += "\nВ таблице должно быть время пар, иначе непонятно, где какая пара.";
+  return b;
+}
+
+function readPdf(file) { readPdfBuffer(file.arrayBuffer()); }
+
+window.knnOpenPdfBase64 = function (b64) {
+  var bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  readPdfBuffer(Promise.resolve(bytes.buffer));
+};
+
+/** The pairs of the chosen group, for the iOS app to schedule notifications and auto-join. */
+function syncNative() {
+  if (!NATIVE) return;
+  var items = [];
+  if (state.group) state.sheets.forEach(function (sh) {
+    var col = Sched.find(sh, state.group), dp = sh.date.split(".");
+    if (!col || dp.length !== 3) return;
+    var y = +dp[2]; if (y < 100) y += 2000;
+    col.lessons.forEach(function (l) {
+      var m = mins(l.time); if (!m) return;
+      var start = new Date(y, +dp[1] - 1, +dp[0], Math.floor(m[0] / 60), m[0] % 60).getTime();
+      var end = new Date(y, +dp[1] - 1, +dp[0], Math.floor(m[1] / 60), m[1] % 60).getTime();
+      var url = null, names = [];
+      l.teachers.forEach(function (w) { var c = lookup(w); if (c.length === 1) { names.push(c[0][0]); if (!url) url = c[0][1]; } else names.push(w); });
+      items.push({ start: start, end: end, title: l.num + " пара в " + l.time.split("–")[0] + (l.subject ? " · " + l.subject : ""),
+        body: names.length ? names.join(", ") + (url ? " · нажми, чтобы войти" : "") : "Открой расписание", url: url, joinTitle: l.subject || names.join(", ") });
+    });
+  });
+  native({ type: "plan", fio: state.fio, auto: state.auto, items: items });
+}
+
+function readPdfBuffer(bufPromise) {
+  var chars = 0, text = "", pages = 0;
+  state.loading = true; state.tab = "s"; render();
+  bufPromise.then(function (buf) {
+    return pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  }).then(function (doc) {
+    var found = [], p = Promise.resolve();
+    pages = doc.numPages;
+    for (var n = 1; n <= doc.numPages; n++) (function (n) {
+      p = p.then(function () { return doc.getPage(n); }).then(function (page) {
+        var vp = page.getViewport({ scale: 1 });
+        return Promise.all([page.getTextContent(), page.getOperatorList().catch(function () { return null; })]).then(function (r) {
+          var glyphs = Sched.glyphsFromContent(r[0], vp), segs = [];
+          chars += glyphs.length;
+          text += r[0].items.map(function (it) { return it.str; }).join(" ") + "\n";
+          try { if (r[1]) segs = Sched.bordersFromOps(r[1], vp); } catch (e) {}
+          var sh = Sched.parse(glyphs, segs, known);
+          if (!sh.date) { var t = new Date(); sh.date = ("0" + t.getDate()).slice(-2) + "." + ("0" + (t.getMonth() + 1)).slice(-2) + "." + t.getFullYear(); }
+          if (sh.columns.some(function (col) { return col.lessons.length; })) found.push(sh);
+        });
+      });
+    })(n);
+    return p.then(function () { return found; });
+  }).then(function (found) {
+    state.loading = false;
+    state.lastLoaded = found;
+    if (!found.length) { state.problem = diagnose(text, chars, pages); render(); return; }
+    state.problem = null;
+    found.forEach(storeSheet); save("sheets", state.sheets); syncNative();
+    var mine = found.filter(function (sh) { return state.group && Sched.find(sh, state.group); })[0];
+    state.day = (mine || found[0]).date;
+    render();
+    if (!state.group) groupSheet();
+    else if (!mine) toast("Твоей группы " + state.group + " нет в этом PDF");
+    else toast("Расписание на " + state.day + " загружено");
+  }).catch(function (e) {
+    state.loading = false; render(); toast("Не удалось прочитать PDF: " + (e && e.message ? e.message : "ошибка"));
+  });
+}
+
+/* ---------- events ---------- */
+$("tabS").onclick = function () { state.tab = "s"; render(); };
+$("tabT").onclick = function () { state.tab = "t"; render(); };
+$("groupBtn").onclick = groupSheet;
+$("whoBtn").onclick = nameSheet;
+$("pdfInput").onchange = function () { var f = this.files && this.files[0]; if (f) readPdf(f); this.value = ""; };
+$("sheet").addEventListener("click", function (e) {
+  if (e.target === $("sheet") || e.target.closest("[data-act=close]")) return closeSheet();
+  var g = e.target.closest("[data-g]"); if (g) setGroup(g.getAttribute("data-g"));
+});
+$("sheet").addEventListener("submit", function (e) {
+  e.preventDefault();
+  if (e.target.id === "gForm") { var v = $("gIn").value.trim(); if (v) setGroup(v); }
+  if (e.target.id === "nForm") { state.fio = $("nIn").value.trim().replace(/\s+/g, " "); save("fio", state.fio); closeSheet(); render(); syncNative(); }
+});
+$("view").addEventListener("click", function (e) {
+  if (e.target.closest("[data-act=group]")) return groupSheet();
+  if (e.target.closest("[data-act=hide]")) { state.problem = null; return render(); }
+  if (e.target.closest("[data-act=auto]")) { state.auto = !state.auto; save("auto", state.auto); render(); syncNative(); return toast(state.auto ? "Буду заходить на пары сам" : "Автовход выключен"); }
+  var dd = e.target.closest("[data-day]"); if (dd) { state.day = dd.getAttribute("data-day"); return render(); }
+  var f = e.target.closest("[data-fav]");
+  if (f) { var u = f.getAttribute("data-fav"), i = state.favs.indexOf(u); if (i >= 0) state.favs.splice(i, 1); else state.favs.push(u); save("favs", state.favs); render(); return; }
+  var a = e.target.closest("[data-join]");
+  if (a && NATIVE) {
+    e.preventDefault();
+    if (!state.fio) { toast("Сначала введи ФИО, с ним приложение будет входить само"); nameSheet(); return; }
+    native({ type: "join", url: a.getAttribute("href"), title: a.getAttribute("data-title") || "Пара", fio: state.fio });
+    return;
+  }
+  if (a) {
+    if (!state.fio) { toast("Введи ФИО в шапке, чтобы оно копировалось само"); return; }
+    try { navigator.clipboard.writeText(state.fio).then(function () { toast("ФИО скопировано, вставь его в поле «Имя»"); }, function () { toast("Твоё ФИО: " + state.fio); }); }
+    catch (err) { toast("Твоё ФИО: " + state.fio); }
+  }
+});
+$("view").addEventListener("input", function (e) { if (e.target.id === "q") { state.q = e.target.value; renderTeachers($("view")); } });
+document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
+
+if (!state.group && isSample()) state.group = "";
+render();
+syncNative();
+if (NATIVE && !state.fio) setTimeout(nameSheet, 400);
+setInterval(function () { if (state.tab === "s" && $("sheet").hidden) render(); }, 60000);
+</script>
