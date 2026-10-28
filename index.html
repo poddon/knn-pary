@@ -110,6 +110,11 @@ a.go:active { transform: scale(.97); }
 .groups { display: flex; flex-wrap: wrap; gap: 8px; }
 .groups button { border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
 .groups button[aria-pressed="true"] { border-color: var(--brand); color: var(--brand); }
+.days { display: flex; gap: 8px; overflow-x: auto; padding: 1px 1px 2px; scrollbar-width: none; }
+.days::-webkit-scrollbar { display: none; }
+.days button { flex: none; border: 1.5px solid color-mix(in srgb, var(--brand) 35%, transparent); background: var(--card); color: var(--brand); border-radius: 12px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+.days button[aria-pressed="true"] { background: var(--brand); color: #FFFFFF; border-color: var(--brand); }
+.warn { background: var(--warn-bg); color: var(--warn-fg); border-radius: 14px; padding: 12px 14px; font-size: 14px; white-space: pre-line; }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 11px 16px; border-radius: 14px; font-size: 14px; z-index: 30; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.2); }
 details.howto summary { cursor: pointer; font-weight: 600; }
 details.howto ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; }
@@ -141,7 +146,11 @@ details.howto ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px
 <script>
 // Schedule parser: port of ScheduleParser.java. Glyph = {x, w, y (baseline, top-down), h (font size), s}
 var Sched = (function () {
-  var LABEL = /^\s*(\d{1,2})\s*\)\s*(\d{1,2})[.:](\d{2})\s*[-–—]\s*(\d{1,2})[.:](\d{2})/;
+  var LABEL = /^\s*(?:(\d{1,2})\s*(?:\)|-?\s*(?:я\s*)?пара|\.(?!\d))\s*)?(\d{1,2})[.:](\d{2})\s*[-–—]\s*(\d{1,2})[.:](\d{2})/i;
+  var TIME = /(\d{1,2})[.:](\d{2})\s*[-–—]\s*(\d{1,2})[.:](\d{2})/;
+  var TIME_G = /(\d{1,2})[.:](\d{2})\s*[-–—]\s*(\d{1,2})[.:](\d{2})/g;
+  var NUM = /^\s*(\d{1,2})\s*(?:\)|-?\s*(?:я\s*)?пара|\.(?!\d))/i;
+  var GROUP_TOKEN = /^[0-9][0-9А-ЯЁA-Zа-яё.\-\/]*$/;
   var SPEC = /\d{2}\.\d{2}\.\d{2}/;
   var SPEC_G = /\d{2}\.\d{2}\.\d{2}/g;
   var DATE = /(\d{1,2}\.\d{1,2}\.\d{2,4})/;
@@ -220,7 +229,7 @@ var Sched = (function () {
       var last = l.g[l.map[end]];
       labelRight = Math.max(labelRight, last.x + last.w);
       labels.push(l.y);
-      proto.push({ num: +m[1], time: m[2] + ":" + m[3] + "–" + m[4] + ":" + m[5] });
+      proto.push({ num: m[1] ? +m[1] : proto.length + 1, time: m[2] + ":" + m[3] + "–" + m[4] + ":" + m[5] });
     });
     if (!labels.length) return sheet;
 
@@ -263,7 +272,7 @@ var Sched = (function () {
       hi[i] = i === nc - 1 ? Infinity : (centers[i] + centers[i + 1]) / 2;
       var col = { groups: [], spec: specs[i], lessons: [] }, sb = "";
       headSegs.forEach(function (s) { var cx = (s[0] + s[1]) / 2; if (cx >= lo[i] && cx < hi[i]) sb += s[2] + ","; });
-      sb.split(/[,;]+/).forEach(function (g) { g = g.replace(/\s+/g, ""); if (g && !/^\d{2}\.\d{2}\.\d{2}$/.test(g)) col.groups.push(g); });
+      col.groups = groupTokens(sb);
       sheet.columns.push(col);
     }
 
@@ -279,26 +288,208 @@ var Sched = (function () {
         var cell = glyphs.filter(function (g) { var cx = g.x + g.w / 2; return cx >= lo[ci] && cx < hi[ci] && g.y > top[r] && g.y <= bot[r] && !blank(g.s); });
         if (!cell.length) continue;
         var texts = lines(cell).map(function (l) { return clean(l.text); });
-        var teachers = [], cut = texts.length;
-        for (var t = texts.length - 1; t >= 0; t--) {
-          var items = texts[t].split(","), nameLine = true, isKnown = true, names = [];
-          for (var k = 0; k < items.length; k++) {
-            var it = items[k].trim(); if (!it) continue;
-            if (!NAME.test(it)) { nameLine = false; break; }
-            names.push(it);
-            if (!known[it.split(/\s+/)[0]]) isKnown = false;
-          }
-          if (!nameLine || !names.length) break;
-          if (t !== texts.length - 1 && !isKnown) break;
-          if (t === texts.length - 1 && texts.length === 1 && !isKnown) break;
-          teachers = names.concat(teachers); cut = t;
-        }
-        var subject = clean(texts.slice(0, cut).join(" ")).replace(/,$/, "");
+        var sp = split(texts, known), subject = sp.subject, teachers = sp.teachers;
         if (!subject && !teachers.length) continue;
         sheet.columns[ci].lessons.push({ num: proto[r].num, time: proto[r].time, subject: subject, teachers: teachers });
       }
     }
     return sheet;
+  }
+
+
+  function split(texts, known) {
+    var teachers = [], cut = texts.length;
+    for (var t = texts.length - 1; t >= 0; t--) {
+      var items = texts[t].split(/[,;]/), nameLine = true, isKnown = true, names = [];
+      for (var k = 0; k < items.length; k++) {
+        var it = items[k].trim(); if (!it) continue;
+        if (!NAME.test(it)) { nameLine = false; break; }
+        names.push(it);
+        if (!known[it.split(/\s+/)[0]]) isKnown = false;
+      }
+      if (!nameLine || !names.length) break;
+      if (t !== texts.length - 1 && !isKnown) break;
+      if (t === texts.length - 1 && texts.length === 1 && !isKnown) break;
+      for (k = names.length - 1; k >= 0; k--) if (teachers.indexOf(names[k]) < 0) teachers.unshift(names[k]);
+      cut = t;
+    }
+    var subj = [];
+    texts.slice(0, cut).forEach(function (x) { if (subj.indexOf(x) < 0) subj.push(x); });
+    return { subject: clean(subj.join(" ")).replace(/[,;]$/, ""), teachers: teachers };
+  }
+
+  function groupTokens(text) {
+    var out = [];
+    text.split(/[,;\s]+/).forEach(function (t) {
+      t = t.trim();
+      if (t.length < 3 || /^\d{2}\.\d{2}\.\d{2}$/.test(t) || /^\d{1,2}\.\d{1,2}\.\d{2,4}$/.test(t) || TIME.test(t)) return;
+      if (GROUP_TOKEN.test(t) && (/\d{3,}/.test(t) || /\d.*[А-ЯЁA-Zа-яё]/.test(t))) out.push(t);
+    });
+    return out;
+  }
+
+  function titleInfo(sheet, ls) {
+    ls.forEach(function (l) {
+      var m;
+      if (!sheet.date && l.text.toLowerCase().indexOf("расписание") >= 0 && (m = DATE.exec(l.text))) sheet.date = m[1];
+      if (!sheet.weekday && (m = DAY.exec(l.text))) sheet.weekday = m[1].toLowerCase();
+      if (!sheet.course && (m = COURSE.exec(l.text))) sheet.course = m[1];
+    });
+    if (!sheet.date) for (var i = 0; i < ls.length; i++) { var m2 = DATE.exec(ls[i].text); if (m2 && !SPEC.test(ls[i].text)) { sheet.date = m2[1]; break; } }
+  }
+
+  // ===================== grid-based parsing =====================
+  function addRect(out, x0, y0, x1, y1, stroked) {
+    var l = Math.min(x0, x1), r = Math.max(x0, x1), t = Math.min(y0, y1), b = Math.max(y0, y1), w = r - l, h = b - t;
+    if (h <= 3 && w > 3) out.push({ h: true, pos: (t + b) / 2, a: l, b: r });
+    else if (w <= 3 && h > 3) out.push({ h: false, pos: (l + r) / 2, a: t, b: b });
+    else if (stroked && w > 3 && h > 3) {
+      out.push({ h: true, pos: t, a: l, b: r }, { h: true, pos: b, a: l, b: r }, { h: false, pos: l, a: t, b: b }, { h: false, pos: r, a: t, b: b });
+    }
+  }
+  function addLine(out, x0, y0, x1, y1) {
+    if (Math.abs(y1 - y0) < 1.5 && Math.abs(x1 - x0) > 3) out.push({ h: true, pos: (y0 + y1) / 2, a: Math.min(x0, x1), b: Math.max(x0, x1) });
+    else if (Math.abs(x1 - x0) < 1.5 && Math.abs(y1 - y0) > 3) out.push({ h: false, pos: (x0 + x1) / 2, a: Math.min(y0, y1), b: Math.max(y0, y1) });
+  }
+  function cluster(v, tol) {
+    v = v.slice().sort(function (a, b) { return a - b; });
+    var out = [], sum = 0, n = 0, last = NaN;
+    v.forEach(function (x) { if (n && x - last > tol) { out.push(sum / n); sum = 0; n = 0; } sum += x; n++; last = x; });
+    if (n) out.push(sum / n);
+    return out;
+  }
+  function coverage(segs, horiz, pos, a, b, tol) {
+    var iv = [];
+    segs.forEach(function (s) { if (s.h === horiz && Math.abs(s.pos - pos) <= tol) { var lo = Math.max(a, s.a), hi = Math.min(b, s.b); if (hi > lo) iv.push([lo, hi]); } });
+    iv.sort(function (p, q) { return p[0] - q[0]; });
+    var cov = 0, cl = -1, ch = -1;
+    iv.forEach(function (i) { if (ch < 0 || i[0] > ch) { if (ch > 0) cov += ch - cl; cl = i[0]; ch = i[1]; } else ch = Math.max(ch, i[1]); });
+    if (ch > 0) cov += ch - cl;
+    return b > a ? cov / (b - a) : 0;
+  }
+  function cells(segs, glyphs) {
+    var xs = cluster(segs.filter(function (s) { return !s.h; }).map(function (s) { return s.pos; }), 2.5);
+    var ys = cluster(segs.filter(function (s) { return s.h; }).map(function (s) { return s.pos; }), 2.5);
+    var nx = xs.length - 1, ny = ys.length - 1;
+    if (nx < 2 || ny < 2 || nx * ny > 20000) return null;
+    var parent = []; for (var i = 0; i < nx * ny; i++) parent[i] = i;
+    function find(i) { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; }
+    for (var j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
+      if (i + 1 < nx && coverage(segs, false, xs[i + 1], ys[j], ys[j + 1], 2.5) < 0.5) parent[find(j * nx + i)] = find(j * nx + i + 1);
+      if (j + 1 < ny && coverage(segs, true, ys[j + 1], xs[i], xs[i + 1], 2.5) < 0.5) parent[find(j * nx + i)] = find((j + 1) * nx + i);
+    }
+    var map = {}, out = [];
+    for (j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
+      var root = find(j * nx + i), c = map[root];
+      if (!c) { c = map[root] = { x0: xs[i], x1: xs[i + 1], y0: ys[j], y1: ys[j + 1], col0: i, g: [], texts: [], text: "" }; out.push(c); }
+      else { c.x0 = Math.min(c.x0, xs[i]); c.x1 = Math.max(c.x1, xs[i + 1]); c.y0 = Math.min(c.y0, ys[j]); c.y1 = Math.max(c.y1, ys[j + 1]); c.col0 = Math.min(c.col0, i); }
+    }
+    glyphs.forEach(function (g) {
+      if (blank(g.s)) return;
+      var cx = g.x + g.w / 2, cy = g.y - g.h * 0.3;
+      for (var k = 0; k < out.length; k++) { var c = out[k]; if (cx >= c.x0 && cx < c.x1 && cy >= c.y0 && cy < c.y1) { c.g.push(g); break; } }
+    });
+    out.forEach(function (c) { lines(c.g).forEach(function (l) { var t = clean(l.text); if (t) c.texts.push(t); }); c.text = c.texts.join(" "); });
+    return out;
+  }
+
+  function parseGrid(glyphs, segs, known) {
+    if (!segs || segs.length < 6) return null;
+    var cs = cells(segs, glyphs);
+    if (!cs) return null;
+    var sheet = { date: "", weekday: "", course: "", columns: [] };
+    titleInfo(sheet, lines(glyphs));
+    var minCol = Infinity;
+    cs.forEach(function (c) { if (TIME.test(c.text)) minCol = Math.min(minCol, c.col0); });
+    var labels = cs.filter(function (c) { return c.col0 === minCol && TIME.test(c.text); }).sort(function (a, b) { return a.y0 - b.y0; });
+    if (!labels.length) return null;
+    var labelRight = 0; labels.forEach(function (c) { labelRight = Math.max(labelRight, c.x1); });
+    var lastY = labels[labels.length - 1].y0;
+    var heads = cs.filter(function (c) {
+      if (c.x0 < labelRight - 1 || c.y1 > lastY + 1) return false;
+      for (var i = 0; i < labels.length; i++) if (c.y0 >= labels[i].y0 - 1 && c.y1 <= labels[i].y1 + 1) return false;
+      return groupTokens(c.text).length > 0;
+    });
+    if (!heads.length) return null;
+    var byKey = {}, order = [];
+    labels.forEach(function (lab, idx) {
+      var tm = TIME.exec(lab.text), nm = NUM.exec(lab.text);
+      var num = nm ? +nm[1] : idx + 1, time = tm[1] + ":" + tm[2] + "–" + tm[3] + ":" + tm[4];
+      var ref = null;
+      heads.forEach(function (h) { if (h.y1 <= lab.y0 + 1 && (!ref || h.y1 > ref.y1)) ref = h; });
+      if (!ref) return;
+      var band = heads.filter(function (h) { return h.y1 <= lab.y0 + 1 && h.y0 < ref.y1 - 1 && h.y1 > ref.y0 + 1; }).sort(function (a, b) { return a.x0 - b.x0; });
+      band.forEach(function (h) {
+        var key = Math.round(h.x0) + ":" + Math.round(h.y0), col = byKey[key];
+        if (!col) {
+          col = byKey[key] = { groups: groupTokens(h.text), spec: "", lessons: [] }; order.push(key);
+          for (var i = 0; i < cs.length; i++) { var s2 = cs[i]; if (s2.y0 >= h.y1 - 1 && s2.y1 <= lab.y0 + 1 && s2.x0 >= h.x0 - 1 && s2.x1 <= h.x1 + 1) { var sm = SPEC.exec(s2.text); if (sm) { col.spec = sm[0]; break; } } }
+        }
+        var parts = cs.filter(function (c) {
+          if (c.y1 <= lab.y0 + 1 || c.y0 >= lab.y1 - 1 || !c.texts.length) return false;
+          var ov = Math.min(c.x1, h.x1) - Math.max(c.x0, h.x0);
+          return ov >= Math.min(c.x1 - c.x0, h.x1 - h.x0) * 0.5;
+        }).sort(function (a, b) { return Math.abs(a.y0 - b.y0) > 1 ? a.y0 - b.y0 : a.x0 - b.x0; });
+        var texts = []; parts.forEach(function (c) { texts = texts.concat(c.texts); });
+        if (!texts.length) return;
+        var sp = split(texts, known);
+        if (!sp.subject && !sp.teachers.length) return;
+        col.lessons.push({ num: num, time: time, subject: sp.subject, teachers: sp.teachers });
+      });
+    });
+    order.forEach(function (k) { if (byKey[k].groups.length) sheet.columns.push(byKey[k]); });
+    var n = 0; sheet.columns.forEach(function (c) { n += c.lessons.length; });
+    return n ? sheet : null;
+  }
+
+  function parse(glyphs, segs, known) {
+    var g = null;
+    try { g = parseGrid(glyphs, segs, known); } catch (e) {}
+    return g || parsePage(glyphs, known);
+  }
+
+  /** Table borders from a pdf.js operator list, in the same top-down coordinates as the text. */
+  function bordersFromOps(opList, viewport) {
+    var O = pdfjsLib.OPS, U = pdfjsLib.Util, segs = [];
+    var ctm = [1, 0, 0, 1, 0, 0], stack = [], rects = [], lns = [], boxes = [], box = null, cx = 0, cy = 0, sx = 0, sy = 0;
+    function dev(x, y) { var p = U.applyTransform([x, y], ctm); return U.applyTransform(p, viewport.transform); }
+    function grow(p) { if (!box) { box = [p[0], p[1], p[0], p[1]]; boxes.push(box); return; } box[0] = Math.min(box[0], p[0]); box[1] = Math.min(box[1], p[1]); box[2] = Math.max(box[2], p[0]); box[3] = Math.max(box[3], p[1]); }
+    function clear() { rects = []; lns = []; boxes = []; box = null; }
+    function commit(stroked) {
+      rects.forEach(function (r) { addRect(segs, r[0], r[1], r[2], r[3], stroked); });
+      if (stroked) lns.forEach(function (l) { addLine(segs, l[0], l[1], l[2], l[3]); });
+      else boxes.forEach(function (b) { addRect(segs, b[0], b[1], b[2], b[3], false); });
+      clear();
+    }
+    var fn = opList.fnArray, args = opList.argsArray;
+    for (var i = 0; i < fn.length; i++) {
+      var op = fn[i], a = args[i];
+      if (op === O.save) stack.push(ctm.slice());
+      else if (op === O.restore) { if (stack.length) ctm = stack.pop(); }
+      else if (op === O.transform) ctm = U.transform(ctm, a);
+      else if (op === O.paintFormXObjectBegin) { stack.push(ctm.slice()); if (a && a[0]) ctm = U.transform(ctm, a[0]); }
+      else if (op === O.paintFormXObjectEnd) { if (stack.length) ctm = stack.pop(); }
+      else if (op === O.constructPath) {
+        var ops = a[0], co = a[1], k = 0;
+        for (var j = 0; j < ops.length; j++) {
+          var o = ops[j];
+          if (o === O.rectangle) {
+            var x = co[k++], y = co[k++], w = co[k++], h = co[k++];
+            var p0 = dev(x, y), p1 = dev(x + w, y + h), p2 = dev(x + w, y), p3 = dev(x, y + h);
+            rects.push([Math.min(p0[0], p1[0], p2[0], p3[0]), Math.min(p0[1], p1[1], p2[1], p3[1]), Math.max(p0[0], p1[0], p2[0], p3[0]), Math.max(p0[1], p1[1], p2[1], p3[1])]);
+            box = null; cx = sx = x; cy = sy = y;
+          } else if (o === O.moveTo) { cx = sx = co[k++]; cy = sy = co[k++]; box = null; grow(dev(cx, cy)); }
+          else if (o === O.lineTo) { var nx = co[k++], ny = co[k++], q0 = dev(cx, cy), q1 = dev(nx, ny); lns.push([q0[0], q0[1], q1[0], q1[1]]); grow(q1); cx = nx; cy = ny; }
+          else if (o === O.curveTo) { k += 4; cx = co[k++]; cy = co[k++]; }
+          else if (o === O.curveTo2 || o === O.curveTo3) { k += 2; cx = co[k++]; cy = co[k++]; }
+          else if (o === O.closePath) { if (cx !== sx || cy !== sy) { var r0 = dev(cx, cy), r1 = dev(sx, sy); lns.push([r0[0], r0[1], r1[0], r1[1]]); } cx = sx; cy = sy; }
+        }
+      }
+      else if (op === O.stroke || op === O.closeStroke || op === O.fillStroke || op === O.eoFillStroke || op === O.closeFillStroke || op === O.closeEOFillStroke) commit(true);
+      else if (op === O.fill || op === O.eoFill) commit(false);
+      else if (op === O.endPath) clear();
+    }
+    return segs;
   }
 
   /** pdf.js page -> glyphs (one per character, positioned proportionally inside each text run). */
@@ -332,7 +523,7 @@ var Sched = (function () {
     return null;
   }
 
-  return { parsePage: parsePage, glyphsFromContent: glyphsFromContent, find: find, normGroup: normGroup };
+  return { parse: parse, parseGrid: parseGrid, addRect: addRect, addLine: addLine, bordersFromOps: bordersFromOps, groupTokens: groupTokens, TIME_G: TIME_G, parsePage: parsePage, glyphsFromContent: glyphsFromContent, find: find, normGroup: normGroup };
 })();
 if (typeof module !== "undefined") module.exports = Sched;
 
@@ -346,7 +537,7 @@ try { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/aja
 function load(k, d) { try { var v = localStorage.getItem("knn." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
 function save(k, v) { try { localStorage.setItem("knn." + k, JSON.stringify(v)); } catch (e) {} }
 
-var state = { tab: "s", fio: load("fio", ""), group: load("group", ""), sheets: load("sheets", []), favs: load("favs", []), q: "", loading: false };
+var state = { tab: "s", fio: load("fio", ""), group: load("group", ""), sheets: load("sheets", []), favs: load("favs", []), q: "", loading: false, day: null, problem: null, lastLoaded: [] };
 
 var bySurname = {}, known = {};
 TEACHERS.forEach(function (t) {
@@ -385,8 +576,13 @@ function mins(t) { var m = /(\d{1,2}):(\d{2})\D+(\d{1,2}):(\d{2})/.exec(t); retu
 function allSheets() { return state.sheets.length ? state.sheets : [SAMPLE]; }
 function isSample() { return !state.sheets.length; }
 
+function daysForGroup() {
+  return allSheets().filter(function (sh) { return Sched.find(sh, state.group); }).sort(function (a, b) { return dayKey(a.date) - dayKey(b.date); });
+}
+
 function findSheet() {
   if (!state.group) return null;
+  if (state.day) { var sel = allSheets().filter(function (sh) { return sh.date === state.day && Sched.find(sh, state.group); })[0]; if (sel) return sel; }
   var today = todayKey(0), best = null;
   allSheets().forEach(function (sh) {
     if (!Sched.find(sh, state.group)) return;
@@ -400,7 +596,7 @@ function findSheet() {
 }
 
 function knownGroups() {
-  var set = {}, sh = allSheets(), d = sh[0] ? sh[0].date : "";
+  var set = {}, sh = state.lastLoaded.length ? state.lastLoaded : allSheets(), d = sh[0] ? sh[0].date : "";
   sh.forEach(function (s) { if (s.date === d) s.columns.forEach(function (c) { c.groups.forEach(function (g) { set[g] = 1; }); }); });
   return Object.keys(set).sort();
 }
@@ -433,6 +629,7 @@ function teacherRows(l) {
 function renderSchedule(v) {
   var h = "";
   if (state.loading) { v.innerHTML = '<div class="empty"><b>Читаю расписание…</b><span>Секунду</span></div>'; return; }
+  if (state.problem) h += '<div class="warn">' + esc(state.problem) + '</div><div class="row2"><label class="btn primary" for="pdfInput">Другой PDF</label><button class="btn" type="button" data-act="hide">Скрыть</button></div>';
   if (!state.group) {
     h += '<div class="empty"><b>Выбери свою группу</b><span>Покажу только твои пары</span></div>';
     h += '<button class="btn primary" type="button" data-act="group">Выбрать группу</button>';
@@ -441,13 +638,24 @@ function renderSchedule(v) {
   }
   var sh = findSheet();
   if (!sh) {
-    var last = allSheets()[0];
-    h += '<div class="empty"><b>Группы ' + esc(state.group) + " нет в расписании</b><span>В загруженном PDF на " + esc(last.date) + (last.course ? " (" + esc(last.course) + " курс)" : "") +
-      " только другие группы. Загрузи PDF своего курса или выбери другую группу.</span></div>";
+    var last = state.lastLoaded[0] || allSheets()[0], gl = knownGroups().slice(0, 12).join(", ");
+    h += '<div class="empty"><b>Группы ' + esc(state.group) + " нет в расписании</b><span>В PDF на " + esc(last.date) + (last.course ? " (" + esc(last.course) + " курс)" : "") +
+      " есть группы: " + esc(gl) + ". Загрузи PDF своего курса или выбери другую группу.</span></div>";
     h += '<label class="btn primary" for="pdfInput">Загрузить PDF</label><button class="btn" type="button" data-act="group">Сменить группу</button>';
     v.innerHTML = h + howto(); return;
   }
   var col = Sched.find(sh, state.group), k = dayKey(sh.date), isToday = k === todayKey(0);
+  var days = daysForGroup();
+  if (days.length > 1) {
+    var wds = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    h += '<div class="days">' + days.map(function (d) {
+      var dk = dayKey(d.date), lab = d.date.slice(0, 5);
+      var dt = new Date(Math.floor(dk / 10000), Math.floor(dk / 100) % 100 - 1, dk % 100);
+      if (!isNaN(dt)) lab = wds[dt.getDay()] + " " + lab;
+      if (dk === todayKey(0)) lab = "Сегодня"; else if (dk === todayKey(1)) lab = "Завтра";
+      return '<button type="button" data-day="' + esc(d.date) + '" aria-pressed="' + (d === sh) + '">' + esc(lab) + "</button>";
+    }).join("") + "</div>";
+  }
   if (isSample()) h += '<div class="sample">Это пример: расписание 2 курса на 28.10.2026. Загрузи свой PDF, и здесь будут твои пары.</div>';
   var badge = isToday ? '<span class="badge today">Сегодня</span>' : k === todayKey(1) ? '<span class="badge">Завтра</span>' : k < todayKey(0) ? '<span class="badge">Прошло</span>' : "";
   var wd = sh.weekday ? sh.weekday[0].toUpperCase() + sh.weekday.slice(1) + ", " : "";
@@ -536,17 +744,34 @@ function storeSheet(sh) {
   state.sheets = state.sheets.slice(0, 12);
 }
 
+function diagnose(text, chars, pages) {
+  if (chars < 20) return "В этом PDF нет текста: похоже, это картинка или скан. Такой файл прочитать нельзя. Попроси расписание в виде обычного PDF из Excel.";
+  var times = (text.match(Sched.TIME_G) || []).length;
+  var groups = Sched.groupTokens(text.replace(/\n/g, " ")).filter(function (g, i, a) { return a.indexOf(g) === i; }).slice(0, 8);
+  var b = "Не получилось найти таблицу пар в этом PDF.\nСтраниц: " + pages + ". Время пар (вида 08.00-09.30): " + (times ? "найдено " + times : "не найдено") + ".";
+  if (groups.length) b += "\nПохоже на номера групп: " + groups.join(", ");
+  if (!times) b += "\nВ таблице должно быть время пар, иначе непонятно, где какая пара.";
+  return b;
+}
+
 function readPdf(file) {
+  var chars = 0, text = "", pages = 0;
   state.loading = true; state.tab = "s"; render();
   file.arrayBuffer().then(function (buf) {
     return pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
   }).then(function (doc) {
     var found = [], p = Promise.resolve();
+    pages = doc.numPages;
     for (var n = 1; n <= doc.numPages; n++) (function (n) {
       p = p.then(function () { return doc.getPage(n); }).then(function (page) {
         var vp = page.getViewport({ scale: 1 });
-        return page.getTextContent().then(function (c) {
-          var sh = Sched.parsePage(Sched.glyphsFromContent(c, vp), known);
+        return Promise.all([page.getTextContent(), page.getOperatorList().catch(function () { return null; })]).then(function (r) {
+          var glyphs = Sched.glyphsFromContent(r[0], vp), segs = [];
+          chars += glyphs.length;
+          text += r[0].items.map(function (it) { return it.str; }).join(" ") + "\n";
+          try { if (r[1]) segs = Sched.bordersFromOps(r[1], vp); } catch (e) {}
+          var sh = Sched.parse(glyphs, segs, known);
+          if (!sh.date) { var t = new Date(); sh.date = ("0" + t.getDate()).slice(-2) + "." + ("0" + (t.getMonth() + 1)).slice(-2) + "." + t.getFullYear(); }
           if (sh.columns.some(function (col) { return col.lessons.length; })) found.push(sh);
         });
       });
@@ -554,11 +779,16 @@ function readPdf(file) {
     return p.then(function () { return found; });
   }).then(function (found) {
     state.loading = false;
-    if (!found.length) { render(); toast("В этом PDF не нашлось расписания по группам"); return; }
+    state.lastLoaded = found;
+    if (!found.length) { state.problem = diagnose(text, chars, pages); render(); return; }
+    state.problem = null;
     found.forEach(storeSheet); save("sheets", state.sheets);
+    var mine = found.filter(function (sh) { return state.group && Sched.find(sh, state.group); })[0];
+    state.day = (mine || found[0]).date;
     render();
-    toast("Расписание на " + found[0].date + " загружено");
-    if (!state.group || !findSheet()) groupSheet();
+    if (!state.group) groupSheet();
+    else if (!mine) toast("Твоей группы " + state.group + " нет в этом PDF");
+    else toast("Расписание на " + state.day + " загружено");
   }).catch(function (e) {
     state.loading = false; render(); toast("Не удалось прочитать PDF: " + (e && e.message ? e.message : "ошибка"));
   });
@@ -581,6 +811,8 @@ $("sheet").addEventListener("submit", function (e) {
 });
 $("view").addEventListener("click", function (e) {
   if (e.target.closest("[data-act=group]")) return groupSheet();
+  if (e.target.closest("[data-act=hide]")) { state.problem = null; return render(); }
+  var dd = e.target.closest("[data-day]"); if (dd) { state.day = dd.getAttribute("data-day"); return render(); }
   var f = e.target.closest("[data-fav]");
   if (f) { var u = f.getAttribute("data-fav"), i = state.favs.indexOf(u); if (i >= 0) state.favs.splice(i, 1); else state.favs.push(u); save("favs", state.favs); render(); return; }
   var a = e.target.closest("[data-join]");
