@@ -640,7 +640,7 @@ function renderSchedule(v) {
     h += '<div class="empty"><b>Выбери свою группу</b><span>Покажу только твои пары</span></div>';
     h += '<button class="btn primary" type="button" data-act="group">Выбрать группу</button>';
     h += '<label class="btn" for="pdfInput">Загрузить PDF расписания</label>';
-    v.innerHTML = h + howto(); return;
+    v.innerHTML = h + footer(); return;
   }
   var sh = findSheet();
   if (!sh) {
@@ -648,7 +648,7 @@ function renderSchedule(v) {
     h += '<div class="empty"><b>Группы ' + esc(state.group) + " нет в расписании</b><span>В PDF на " + esc(last.date) + (last.course ? " (" + esc(last.course) + " курс)" : "") +
       " есть группы: " + esc(gl) + ". Загрузи PDF своего курса или выбери другую группу.</span></div>";
     h += '<label class="btn primary" for="pdfInput">Загрузить PDF</label><button class="btn" type="button" data-act="group">Сменить группу</button>';
-    v.innerHTML = h + howto(); return;
+    v.innerHTML = h + footer(); return;
   }
   var col = Sched.find(sh, state.group), k = dayKey(sh.date), isToday = k === todayKey(0);
   var days = daysForGroup();
@@ -686,7 +686,7 @@ function renderSchedule(v) {
   if (NATIVE) h += '<button class="btn" type="button" data-act="auto">' + (state.auto ? "▶ Автовход на пары: включён" : "⏸ Автовход на пары: выключен") + "</button>";
   h += '<p class="hint">' + (WIN ? (state.auto ? "Ноутбук сам проснётся перед парой и зайдёт на неё с твоим ФИО (только слушать). Держи его на зарядке." : "Автовход выключен: перед парой придёт только уведомление.") :
     NATIVE ? "Перед каждой парой придёт уведомление. Нажми на него, и приложение само войдёт с твоим ФИО." : "«Войти» копирует твоё ФИО и открывает конференцию.") + " Даты и время сверяй с официальным расписанием.</p>";
-  v.innerHTML = h + howto();
+  v.innerHTML = h + footer();
 }
 
 /* ---------- calendar reminders (.ics) ---------- */
@@ -912,6 +912,7 @@ $("sheet").addEventListener("submit", function (e) {
 $("view").addEventListener("click", function (e) {
   if (e.target.closest("[data-act=group]")) return groupSheet();
   if (e.target.closest("[data-act=cal]")) return addToCalendar();
+  if (e.target.closest("[data-act=refresh]")) return syncShared("manual");
   if (e.target.closest("[data-act=hide]")) { state.problem = null; return render(); }
   if (e.target.closest("[data-act=auto]")) { state.auto = !state.auto; save("auto", state.auto); render(); syncNative(); return toast(state.auto ? "Буду заходить на пары сам" : "Автовход выключен"); }
   var dd = e.target.closest("[data-day]"); if (dd) { state.day = dd.getAttribute("data-day"); return render(); }
@@ -937,26 +938,67 @@ if (!state.group && isSample()) state.group = "";
 /* ---------- schedule published by the admin ---------- */
 var SHARED_URL = "https://raw.githubusercontent.com/poddon/knn-pary/data/schedule.json";
 function sameSheet(a, b) { return a.date === b.date && (a.course || "") === (b.course || ""); }
-function syncShared(quiet) {
-  if (!window.fetch) return;
-  fetch(SHARED_URL + "?t=" + Date.now(), { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (data) {
+var SHARED_REPO = "poddon/knn-pary", sharedBusy = false, sharedInfo = load("sharedInfo", { updated: "", checked: 0, ok: true });
+
+/* The newest published file: by commit (no CDN delay), or by branch when GitHub limits requests. */
+function sharedFetch() {
+  return fetch("https://api.github.com/repos/" + SHARED_REPO + "/commits/data", { headers: { Accept: "application/vnd.github.sha" }, cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+    .then(function (sha) { sha = sha.trim(); if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error("sha"); return fetch("https://raw.githubusercontent.com/" + SHARED_REPO + "/" + sha + "/schedule.json"); })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r; })
+    .catch(function () { return fetch(SHARED_URL + "?t=" + Date.now(), { cache: "no-store" }); })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+
+/* mode: "quiet" on start, "auto" on timers, "manual" from the button */
+function syncShared(mode) {
+  if (!window.fetch || sharedBusy) return;
+  sharedBusy = true;
+  if (mode === "manual" && state.tab === "s" && $("sheet").hidden) render();
+  sharedFetch().then(function (data) {
+    sharedInfo = { updated: data && data.updated || "", checked: Date.now(), ok: true };
     var incoming = (data && data.sheets || []).map(function (s) { s.shared = true; return s; });
     var before = JSON.stringify(state.sheets.filter(function (s) { return s.shared; }));
     var local = state.sheets.filter(function (s) { return !s.shared && !incoming.some(function (n) { return sameSheet(n, s); }); });
     state.sheets = local.concat(incoming).sort(function (a, b) { return dayKey(b.date) - dayKey(a.date); }).slice(0, 20);
-    if (JSON.stringify(state.sheets.filter(function (s) { return s.shared; })) === before) return;
+    if (JSON.stringify(state.sheets.filter(function (s) { return s.shared; })) === before) {
+      if (mode === "manual") toast("Новых изменений нет, расписание актуально");
+      return;
+    }
     save("sheets", state.sheets);
-    if (!quiet && incoming.length) toast("Расписание обновлено");
-    if ($("sheet").hidden) render();
+    state.day = null;
+    state.lastLoaded = [];
+    if (mode !== "quiet" && incoming.length) toast("Расписание обновлено");
     syncNative();
-  }).catch(function () {});
+  }).catch(function () {
+    sharedInfo = { updated: sharedInfo.updated, checked: Date.now(), ok: false };
+    if (mode === "manual") toast("Нет связи с сервером расписания");
+  }).then(function () {
+    sharedBusy = false;
+    save("sharedInfo", sharedInfo);
+    if ($("sheet").hidden && !(state.tab === "t" && document.activeElement && document.activeElement.id === "q")) render();
+  });
 }
+
+function sharedLine() {
+  var s, i = sharedInfo, two = function (n) { return ("0" + n).slice(-2); };
+  if (!i.checked) s = "Общее расписание ещё не проверялось";
+  else {
+    var c = new Date(i.checked), at = two(c.getHours()) + ":" + two(c.getMinutes());
+    var u = i.updated ? new Date(i.updated) : null;
+    s = (u && !isNaN(u) ? "Общее расписание от " + two(u.getDate()) + "." + two(u.getMonth() + 1) + " " + two(u.getHours()) + ":" + two(u.getMinutes()) : "Общее расписание пока не опубликовано") +
+      (i.ok ? " · проверено в " + at : " · нет связи (" + at + ")");
+  }
+  return '<p class="hint">' + esc(s) + '</p><button class="btn" type="button" data-act="refresh"' + (sharedBusy ? " disabled" : "") + ">" + (sharedBusy ? "Обновляю…" : "⟳ Обновить расписание") + "</button>";
+}
+
+function footer() { return sharedLine() + howto(); }
 
 render();
 syncNative();
-syncShared(true);
-setInterval(function () { syncShared(false); }, 15 * 60000);
-document.addEventListener("visibilitychange", function () { if (!document.hidden) syncShared(false); });
+syncShared("quiet");
+setInterval(function () { syncShared("auto"); }, 10 * 60000);
+document.addEventListener("visibilitychange", function () { if (!document.hidden) syncShared("auto"); });
 if (NATIVE && !state.fio) setTimeout(nameSheet, 400);
 setInterval(function () { if (state.tab === "s" && $("sheet").hidden) render(); }, 60000);
 </script>

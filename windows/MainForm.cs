@@ -65,6 +65,13 @@ class MainForm : Form
         c.Navigate("https://knn.local/index.html");
     }
 
+    /// <summary>Asks the page to fetch the newly published schedule.</summary>
+    public async void Reload()
+    {
+        if (!ready || IsDisposed) return;
+        try { await web.CoreWebView2.ExecuteScriptAsync("window.syncShared && syncShared('auto')"); } catch { }
+    }
+
     public void OpenPdf(string path)
     {
         if (ready) SendPdf(path); else pendingPdf = path;

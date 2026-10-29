@@ -10,7 +10,37 @@ namespace KnnPary;
 static class SharedSchedule
 {
     const string Source = "https://raw.githubusercontent.com/poddon/knn-pary/data/schedule.json";
-    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
+    const string Repo = "poddon/knn-pary";
+    static readonly HttpClient Http = CreateHttp();
+
+    static HttpClient CreateHttp()
+    {
+        var h = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        h.DefaultRequestHeaders.UserAgent.ParseAdd("KNN-pary/1.2");
+        return h;
+    }
+
+    /// <summary>The newest published file: by commit (no CDN delay), or by branch when GitHub limits requests.</summary>
+    static async Task<string> Fetch()
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/" + Repo + "/commits/data");
+            req.Headers.Accept.ParseAdd("application/vnd.github.sha");
+            using var res = await Http.SendAsync(req);
+            res.EnsureSuccessStatusCode();
+            string sha = (await res.Content.ReadAsStringAsync()).Trim();
+            if (!Regex.IsMatch(sha, "^[0-9a-f]{40}$")) throw new Exception("bad sha");
+            return await Http.GetStringAsync("https://raw.githubusercontent.com/" + Repo + "/" + sha + "/schedule.json");
+        }
+        catch
+        {
+            return await Http.GetStringAsync(Source + "?t=" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        }
+    }
+
+    public static DateTime LastCheck = DateTime.MinValue;
+    public static bool LastOk = true;
     static string CachePath => Path.Combine(Program.Home, "shared.json");
     static List<string[]> teachers;
 
@@ -19,8 +49,9 @@ static class SharedSchedule
     {
         try
         {
-            string text = await Http.GetStringAsync(Source + "?t=" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            string text = await Fetch();
             using (JsonDocument.Parse(text)) { }
+            LastCheck = DateTime.Now; LastOk = true;
             string old = File.Exists(CachePath) ? await File.ReadAllTextAsync(CachePath) : "";
             if (old == text) return false;
             await File.WriteAllTextAsync(CachePath, text);
@@ -29,6 +60,7 @@ static class SharedSchedule
         }
         catch (Exception e)
         {
+            LastCheck = DateTime.Now; LastOk = false;
             Program.Log("shared schedule: " + e.Message);
             return false;
         }

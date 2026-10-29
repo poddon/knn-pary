@@ -64,14 +64,52 @@ public class MainActivity extends Activity {
   @Override protected void onResume() {
     super.onResume();
     loadLinks(); loadSheets(); render(); Reminders.schedule(this);
+    refreshShared(false);
+  }
+
+  // ---------- schedule published by the admin ----------
+  boolean sharedBusy = false;
+
+  void refreshShared(boolean manual) {
+    if (sharedBusy) return;
+    sharedBusy = true;
+    if (manual && tab == 0) renderList();
     new Thread(() -> {
-      if (Shared.sync(this)) runOnUiThread(() -> {
-        loadSheets();
-        if (selectedDate != null && findSheet() == null) selectedDate = null;
+      int r = Shared.sync(getApplicationContext());
+      runOnUiThread(() -> {
+        sharedBusy = false;
+        if (r == 1) {
+          loadSheets();
+          selectedDate = null;
+          Toast.makeText(this, "Расписание обновлено", Toast.LENGTH_SHORT).show();
+        } else if (manual) {
+          Toast.makeText(this, r == 0 ? "Новых изменений нет, расписание актуально" : "Нет связи с сервером расписания", Toast.LENGTH_SHORT).show();
+        }
         render();
-        Toast.makeText(this, "Расписание обновлено", Toast.LENGTH_SHORT).show();
       });
     }).start();
+  }
+
+  void sharedFooter() {
+    android.content.SharedPreferences p = getSharedPreferences(PREFS, 0);
+    long checked = p.getLong("shared_checked", 0);
+    String updated = p.getString("shared_updated", "");
+    String when = "";
+    try {
+      if (!updated.isEmpty()) when = java.time.format.DateTimeFormatter.ofPattern("dd.MM HH:mm").withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.parse(updated));
+    } catch (Exception ignored) {}
+    String s;
+    if (checked == 0) s = "Общее расписание ещё не проверялось";
+    else {
+      String at = new java.text.SimpleDateFormat("HH:mm", Locale.ROOT).format(new Date(checked));
+      s = (when.isEmpty() ? "Общее расписание пока не опубликовано" : "Общее расписание от " + when)
+          + (p.getBoolean("shared_ok", true) ? " · проверено в " + at : " · нет связи (" + at + ")");
+    }
+    TextView t = text(s, 12, MUTED, false);
+    t.setGravity(Gravity.CENTER);
+    t.setPadding(0, dp(16), 0, 0);
+    listBox.addView(t, lp(-1, -2));
+    listBox.addView(pill(sharedBusy ? "Обновляю…" : "⟳ Обновить расписание", false, () -> refreshShared(true)));
   }
 
   // ---------- data ----------
@@ -813,6 +851,7 @@ public class MainActivity extends Activity {
     if (sheets.isEmpty()) {
       empty("Расписания пока нет", "Поделись PDF с расписанием из MAX в «КНН пары» или выбери файл");
       listBox.addView(pill("Загрузить PDF", true, this::pickPdf));
+      sharedFooter();
       return;
     }
     String g = group();
@@ -820,6 +859,7 @@ public class MainActivity extends Activity {
       empty("Выбери свою группу", "Покажу только твои пары");
       listBox.addView(pill("Выбрать группу", true, this::groupDialog));
       listBox.addView(pill("Загрузить другой PDF", false, this::pickPdf));
+      sharedFooter();
       return;
     }
     ScheduleParser.Sheet sh = findSheet();
@@ -829,6 +869,7 @@ public class MainActivity extends Activity {
       empty("Группы " + g + " нет в расписании", "В PDF на " + last.date + (last.course.isEmpty() ? "" : " (" + last.course + " курс)") + " есть группы: " + TextUtils.join(", ", gl.subList(0, Math.min(12, gl.size()))) + ". Загрузи PDF своего курса или выбери другую группу.");
       listBox.addView(pill("Загрузить PDF", true, this::pickPdf));
       listBox.addView(pill("Сменить группу", false, this::groupDialog));
+      sharedFooter();
       return;
     }
     ScheduleParser.Column col = sh.find(g);
@@ -947,6 +988,7 @@ public class MainActivity extends Activity {
       Toast.makeText(this, Reminders.enabled(this) ? "Напомню за " + Reminders.LEAD_MIN + " мин до пары (" + n + ")" : "Напоминания выключены", Toast.LENGTH_SHORT).show();
       renderList();
     }));
+    sharedFooter();
     TextView hint = text("Даты и время сверяй с официальным расписанием.", 12, MUTED, false);
     hint.setGravity(Gravity.CENTER);
     hint.setPadding(0, dp(14), 0, 0);

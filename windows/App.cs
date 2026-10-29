@@ -135,14 +135,17 @@ class App : ApplicationContext
     /// <summary>Pairs from the page plus pairs from the schedule the admin published.</summary>
     IEnumerable<PlanItem> Items => Plan.items.Concat(sharedItems.Where(s => !Plan.items.Any(p => p.start == s.start)));
 
-    async void SyncShared()
+    async void SyncShared(bool manual = false)
     {
         bool changed = await SharedSchedule.Download();
+        if (manual)
+            Notify("КНН пары", !SharedSchedule.LastOk ? "Нет связи с сервером расписания" : changed ? "Расписание обновлено" : "Новых изменений нет, расписание актуально", null);
         var items = SharedSchedule.Items(Plan.group);
         if (!changed && items.Count == sharedItems.Count) return;
         sharedItems = items;
         ScheduleWakes();
         Tick();
+        if (changed) main?.Reload();
     }
 
     void SetPlan(PlanData p)
@@ -294,6 +297,7 @@ class App : ApplicationContext
         m.Items.Add(new ToolStripSeparator());
         m.Items.Add("Открыть «КНН пары»", null, (s, e) => ShowMain());
         m.Items.Add("Загрузить PDF расписания…", null, (s, e) => PickPdf());
+        m.Items.Add("Обновить расписание", null, (s, e) => SyncShared(true));
         m.Items.Add(new ToolStripSeparator());
         var auto = new ToolStripMenuItem("Запускать вместе с Windows");
         auto.Click += (s, e) => SetAutostart(!Autostart);
