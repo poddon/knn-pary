@@ -2,7 +2,7 @@ name: Build KNN pary APK
 on:
   push:
     branches: [main]
-    paths-ignore: ["README.md"]
+    paths-ignore: ["README.md", "windows/**", ".github/workflows/build-windows.yml"]
   workflow_dispatch:
 jobs:
   build:

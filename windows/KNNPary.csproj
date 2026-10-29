@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>KNN-pary</AssemblyName>
+    <RootNamespace>KnnPary</RootNamespace>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Product>КНН пары</Product>
+    <AssemblyTitle>КНН пары</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <SatelliteResourceLanguages>ru</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2651.64" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="web\index.html" LogicalName="index.html" />
+    <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
+  </ItemGroup>
+
+</Project>
