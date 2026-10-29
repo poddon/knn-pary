@@ -12,7 +12,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <Product>КНН пары</Product>
     <AssemblyTitle>КНН пары</AssemblyTitle>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
@@ -29,6 +29,8 @@
   <ItemGroup>
     <EmbeddedResource Include="web\index.html" LogicalName="index.html" />
     <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
+    <EmbeddedResource Include="..\app\src\main\assets\teachers.tsv" LogicalName="teachers.tsv" />
+    <EmbeddedResource Include="..\app\src\main\assets\chat.js" LogicalName="chat.js" />
   </ItemGroup>
 
 </Project>

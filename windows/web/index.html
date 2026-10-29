@@ -602,8 +602,8 @@ function findSheet() {
 }
 
 function knownGroups() {
-  var set = {}, sh = state.lastLoaded.length ? state.lastLoaded : allSheets(), d = sh[0] ? sh[0].date : "";
-  sh.forEach(function (s) { if (s.date === d) s.columns.forEach(function (c) { c.groups.forEach(function (g) { set[g] = 1; }); }); });
+  var set = {}, sh = state.lastLoaded.length ? state.lastLoaded : allSheets();
+  sh.forEach(function (s) { s.columns.forEach(function (c) { c.groups.forEach(function (g) { set[g] = 1; }); }); });
   return Object.keys(set).sort();
 }
 
@@ -851,7 +851,7 @@ function syncNative() {
         body: names.length ? names.join(", ") + (url ? " · нажми, чтобы войти" : "") : "Открой расписание", url: url, joinTitle: l.subject || names.join(", ") });
     });
   });
-  native({ type: "plan", fio: state.fio, auto: state.auto, items: items });
+  native({ type: "plan", fio: state.fio, group: state.group, auto: state.auto, items: items });
 }
 
 function readPdfBuffer(bufPromise) {
@@ -934,8 +934,29 @@ $("view").addEventListener("input", function (e) { if (e.target.id === "q") { st
 document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
 
 if (!state.group && isSample()) state.group = "";
+/* ---------- schedule published by the admin ---------- */
+var SHARED_URL = "https://raw.githubusercontent.com/poddon/knn-pary/data/schedule.json";
+function sameSheet(a, b) { return a.date === b.date && (a.course || "") === (b.course || ""); }
+function syncShared(quiet) {
+  if (!window.fetch) return;
+  fetch(SHARED_URL + "?t=" + Date.now(), { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (data) {
+    var incoming = (data && data.sheets || []).map(function (s) { s.shared = true; return s; });
+    var before = JSON.stringify(state.sheets.filter(function (s) { return s.shared; }));
+    var local = state.sheets.filter(function (s) { return !s.shared && !incoming.some(function (n) { return sameSheet(n, s); }); });
+    state.sheets = local.concat(incoming).sort(function (a, b) { return dayKey(b.date) - dayKey(a.date); }).slice(0, 20);
+    if (JSON.stringify(state.sheets.filter(function (s) { return s.shared; })) === before) return;
+    save("sheets", state.sheets);
+    if (!quiet && incoming.length) toast("Расписание обновлено");
+    if ($("sheet").hidden) render();
+    syncNative();
+  }).catch(function () {});
+}
+
 render();
 syncNative();
+syncShared(true);
+setInterval(function () { syncShared(false); }, 15 * 60000);
+document.addEventListener("visibilitychange", function () { if (!document.hidden) syncShared(false); });
 if (NATIVE && !state.fio) setTimeout(nameSheet, 400);
 setInterval(function () { if (state.tab === "s" && $("sheet").hidden) render(); }, 60000);
 </script>

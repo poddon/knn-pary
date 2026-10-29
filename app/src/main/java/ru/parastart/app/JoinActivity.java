@@ -88,7 +88,7 @@ public class JoinActivity extends Activity {
         try { startActivity(new Intent(Intent.ACTION_VIEW, r.getUrl())); } catch (Exception ignored) {}
         return true;
       }
-      @Override public void onPageFinished(WebView v, String u) { autofill(); listenOnly(); }
+      @Override public void onPageFinished(WebView v, String u) { autofill(); listenOnly(); chat(); }
     });
     web.setWebChromeClient(new WebChromeClient() {
       @Override public void onPermissionRequest(PermissionRequest request) {
@@ -188,6 +188,27 @@ public class JoinActivity extends Activity {
         + "if(b){clearInterval(t);b.click();}"
         + "},500);})();";
     web.evaluateJavascript(js, null);
+  }
+
+  /** Says hello in the conference's public chat: "Фамилия Имя, группа". */
+  void chat() {
+    android.content.SharedPreferences p = getSharedPreferences(MainActivity.PREFS, 0);
+    String msg = chatText(p.getString(MainActivity.FIO, ""), p.getString(MainActivity.GROUP, ""));
+    if (msg.isEmpty()) return;
+    try (java.io.InputStream in = getAssets().open("chat.js")) {
+      java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+      byte[] buf = new byte[4096]; int n;
+      while ((n = in.read(buf)) > 0) b.write(buf, 0, n);
+      String js = b.toString("UTF-8").replace("__MSG__", JSONObject.quote(msg));
+      web.evaluateJavascript(js, null);
+    } catch (java.io.IOException ignored) {}
+  }
+
+  static String chatText(String fio, String group) {
+    String[] w = fio.trim().split("\\s+");
+    String name = w.length >= 2 ? w[0] + " " + w[1] : fio.trim();
+    if (name.isEmpty()) return "";
+    return group == null || group.isEmpty() ? name : name + ", " + group;
   }
 
   void confirmExit() {

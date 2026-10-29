@@ -23,6 +23,7 @@ public class ScheduleParser {
 
   public static class Sheet {
     public String date = "", weekday = "", course = "";
+    public boolean shared;
     public List<Column> columns = new ArrayList<>();
     public Column find(String group) {
       String g = normGroup(group);

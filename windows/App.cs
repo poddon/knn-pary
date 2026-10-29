@@ -22,6 +22,7 @@ public class PlanItem
 public class PlanData
 {
     public string fio { get; set; } = "";
+    public string group { get; set; } = "";
     public bool auto { get; set; } = true;
     public List<PlanItem> items { get; set; } = new();
 }
@@ -38,6 +39,8 @@ class App : ApplicationContext
     static Task<CoreWebView2Environment> env;
     readonly Control invoker = new();
     readonly System.Windows.Forms.Timer tick = new() { Interval = 10_000 };
+    readonly System.Windows.Forms.Timer sharedTick = new() { Interval = 15 * 60_000 };
+    List<PlanItem> sharedItems = new();
     readonly HashSet<string> notified = new(), joined = new();
     MainForm main;
     JoinForm join;
@@ -71,6 +74,10 @@ class App : ApplicationContext
         if (Autostart) SetAutostart(true);
         tick.Tick += (s, e) => Tick();
         tick.Start();
+        sharedItems = SharedSchedule.Items(Plan.group);
+        sharedTick.Tick += (s, e) => SyncShared();
+        sharedTick.Start();
+        SyncShared();
         StartPipe();
         FirstRun();
         Handle(args, true);
@@ -84,7 +91,7 @@ class App : ApplicationContext
         if (args.Contains("--quit")) { Exit(); return; }
         string pdf = args.FirstOrDefault(a => a.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) && File.Exists(a));
         if (pdf != null) OpenPdf(pdf);
-        if (args.Contains("--wake")) { Program.Log("woken by task"); Tick(); }
+        if (args.Contains("--wake")) { Program.Log("woken by task"); Tick(); SyncShared(); }
         if (args.Contains("--show") || (startup && args.Length == 0)) ShowMain();
     }
 
@@ -125,10 +132,25 @@ class App : ApplicationContext
         Plan.items ??= new();
     }
 
+    /// <summary>Pairs from the page plus pairs from the schedule the admin published.</summary>
+    IEnumerable<PlanItem> Items => Plan.items.Concat(sharedItems.Where(s => !Plan.items.Any(p => p.start == s.start)));
+
+    async void SyncShared()
+    {
+        bool changed = await SharedSchedule.Download();
+        var items = SharedSchedule.Items(Plan.group);
+        if (!changed && items.Count == sharedItems.Count) return;
+        sharedItems = items;
+        ScheduleWakes();
+        Tick();
+    }
+
     void SetPlan(PlanData p)
     {
         Plan = p ?? new();
         Plan.items ??= new();
+        Plan.group ??= "";
+        sharedItems = SharedSchedule.Items(Plan.group);
         try { File.WriteAllText(PlanPath, JsonSerializer.Serialize(Plan)); }
         catch (Exception e) { Program.Log("plan save: " + e.Message); }
         ScheduleWakes();
@@ -139,7 +161,7 @@ class App : ApplicationContext
     {
         long now = Now;
         var starts = Plan.auto
-            ? Plan.items.Where(i => i.url != null && i.start - Wake.LeadMinutes * 60_000L > now + 30_000).Select(i => i.start).Distinct().OrderBy(x => x).Take(40).ToList()
+            ? Items.Where(i => i.url != null && i.start - Wake.LeadMinutes * 60_000L > now + 30_000).Select(i => i.start).Distinct().OrderBy(x => x).Take(40).ToList()
             : new List<long>();
         string hash = string.Join(",", starts) + "|" + Program.ExePath;
         if (hash == scheduledHash) return;
@@ -175,7 +197,7 @@ class App : ApplicationContext
         long now = Now;
         bool needAwake = join != null && !join.IsDisposed;
         bool canJoin = Plan.auto && !string.IsNullOrEmpty(Plan.fio);
-        foreach (var it in Plan.items.OrderBy(i => i.start))
+        foreach (var it in Items.OrderBy(i => i.start))
         {
             string key = it.start + "|" + it.url;
             if (canJoin && it.url != null && now >= it.start - 10 * 60_000L && now < it.end) needAwake = true;
@@ -287,7 +309,7 @@ class App : ApplicationContext
     string NextText()
     {
         long now = Now;
-        var n = Plan.items.Where(i => i.end > now).OrderBy(i => i.start).FirstOrDefault();
+        var n = Items.Where(i => i.end > now).OrderBy(i => i.start).FirstOrDefault();
         if (n == null) return "Пар нет: загрузи PDF с расписанием";
         var t = DateTimeOffset.FromUnixTimeMilliseconds(n.start).ToLocalTime();
         string what = string.IsNullOrEmpty(n.joinTitle) ? n.title : n.joinTitle;
@@ -355,6 +377,7 @@ class App : ApplicationContext
     {
         exiting = true;
         tick.Stop();
+        sharedTick.Stop();
         KeepAwake(false);
         Tray.Visible = false;
         if (main != null && !main.IsDisposed) main.CloseForReal();

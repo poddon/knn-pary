@@ -61,7 +61,18 @@ public class MainActivity extends Activity {
 
   @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); receive(intent); }
 
-  @Override protected void onResume() { super.onResume(); loadLinks(); render(); Reminders.schedule(this); }
+  @Override protected void onResume() {
+    super.onResume();
+    loadLinks(); loadSheets(); render(); Reminders.schedule(this);
+    new Thread(() -> {
+      if (Shared.sync(this)) runOnUiThread(() -> {
+        loadSheets();
+        if (selectedDate != null && findSheet() == null) selectedDate = null;
+        render();
+        Toast.makeText(this, "Расписание обновлено", Toast.LENGTH_SHORT).show();
+      });
+    }).start();
+  }
 
   // ---------- data ----------
   void loadTeachers() {
@@ -211,6 +222,7 @@ public class MainActivity extends Activity {
     showGroup();
     render();
     Reminders.channel(this);
+    Shared.plan(this);
     Reminders.schedule(this);
     if (fio().isEmpty()) root.post(() -> nameDialog(null));
   }
@@ -667,12 +679,19 @@ public class MainActivity extends Activity {
     return best;
   }
 
-  void saveSheets() {
+  void saveSheets() { writeSheets(this, sheets); }
+
+  static void writeSheets(Context ctx, List<ScheduleParser.Sheet> list) {
+    ctx.getSharedPreferences(PREFS, 0).edit().putString(SHEETS, sheetsJson(list).toString()).apply();
+  }
+
+  static JSONArray sheetsJson(List<ScheduleParser.Sheet> list) {
+    JSONArray arr = new JSONArray();
     try {
-      JSONArray arr = new JSONArray();
-      for (ScheduleParser.Sheet sh : sheets) {
+      for (ScheduleParser.Sheet sh : list) {
         JSONObject o = new JSONObject();
         o.put("date", sh.date); o.put("weekday", sh.weekday); o.put("course", sh.course);
+        if (sh.shared) o.put("shared", true);
         JSONArray cols = new JSONArray();
         for (ScheduleParser.Column c : sh.columns) {
           JSONObject co = new JSONObject();
@@ -689,8 +708,8 @@ public class MainActivity extends Activity {
         o.put("columns", cols);
         arr.put(o);
       }
-      getSharedPreferences(PREFS, 0).edit().putString(SHEETS, arr.toString()).apply();
     } catch (JSONException ignored) {}
+    return arr;
   }
 
   static ArrayList<String> strings(JSONArray a) {
@@ -702,13 +721,19 @@ public class MainActivity extends Activity {
   void loadSheets() { sheets.clear(); sheets.addAll(readSheets(this)); }
 
   static ArrayList<ScheduleParser.Sheet> readSheets(Context ctx) {
+    try { return parseSheets(new JSONArray(ctx.getSharedPreferences(PREFS, 0).getString(SHEETS, "[]"))); }
+    catch (JSONException e) { return new ArrayList<>(); }
+  }
+
+  static ArrayList<ScheduleParser.Sheet> parseSheets(JSONArray arr) {
     ArrayList<ScheduleParser.Sheet> sheets = new ArrayList<>();
+    if (arr == null) return sheets;
     try {
-      JSONArray arr = new JSONArray(ctx.getSharedPreferences(PREFS, 0).getString(SHEETS, "[]"));
       for (int i = 0; i < arr.length(); i++) {
         JSONObject o = arr.getJSONObject(i);
         ScheduleParser.Sheet sh = new ScheduleParser.Sheet();
         sh.date = o.optString("date"); sh.weekday = o.optString("weekday"); sh.course = o.optString("course");
+        sh.shared = o.optBoolean("shared", false);
         JSONArray cols = o.optJSONArray("columns");
         for (int j = 0; cols != null && j < cols.length(); j++) {
           JSONObject co = cols.getJSONObject(j);

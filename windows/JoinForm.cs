@@ -119,7 +119,7 @@ class JoinForm : Form
                 status.Text = title + (endMs > 0
                     ? " · выйду сам в " + DateTimeOffset.FromUnixTimeMilliseconds(endMs + 2 * 60_000L).ToLocalTime().ToString("HH:mm")
                     : "");
-                try { await c.ExecuteScriptAsync(Scripts.Join(fio)); }
+                try { await c.ExecuteScriptAsync(Scripts.Join(fio) + Scripts.Chat(App.I.Plan.fio, App.I.Plan.group)); }
                 catch (Exception ex) { Program.Log("join script: " + ex.Message); }
             };
             c.Navigate(url);
@@ -141,6 +141,24 @@ static class Scripts
 {
     /// <summary>Fills the name on the room's join page, presses join, then picks "listen only" in the conference.</summary>
     public static string Join(string name) => Autofill.Replace("__NAME__", JsonSerializer.Serialize(name ?? "")) + ListenOnly;
+
+    static string chat;
+
+    /// <summary>Writes "Фамилия Имя, группа" in the conference's public chat once per pair.</summary>
+    public static string Chat(string fio, string group)
+    {
+        var w = (fio ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        string name = w.Length >= 2 ? w[0] + " " + w[1] : string.Join(" ", w);
+        if (name.Length == 0) return "";
+        string msg = string.IsNullOrEmpty(group) ? name : name + ", " + group;
+        if (chat == null)
+        {
+            using var s = typeof(Scripts).Assembly.GetManifestResourceStream("chat.js");
+            using var r = new StreamReader(s);
+            chat = r.ReadToEnd();
+        }
+        return chat.Replace("__MSG__", JsonSerializer.Serialize(msg));
+    }
 
     const string Autofill = """
 (function(n){if(!n||window.__knn||location.href.indexOf('html5client')>=0)return;window.__knn=1;
