@@ -1,0 +1,3 @@
+  Determining projects to restore...
+  Restored D:\a\knn-pary\knn-pary\windows\KNNPary.csproj (in 8.11 sec).
+CSC : error CS1566: Error reading resource 'index.html' -- 'Could not find a part of the path 'D:\a\knn-pary\knn-pary\windows\web\index.html'.' [D:\a\knn-pary\knn-pary\windows\KNNPary.csproj]
