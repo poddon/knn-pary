@@ -537,8 +537,11 @@ try { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/aja
 function load(k, d) { try { var v = localStorage.getItem("knn." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
 function save(k, v) { try { localStorage.setItem("knn." + k, JSON.stringify(v)); } catch (e) {} }
 
-var NATIVE = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.knn);
-function native(msg) { try { window.webkit.messageHandlers.knn.postMessage(msg); } catch (e) {} }
+var WIN = !!(window.chrome && window.chrome.webview);
+var NATIVE = WIN || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.knn);
+function native(msg) {
+  try { if (WIN) window.chrome.webview.postMessage(msg); else window.webkit.messageHandlers.knn.postMessage(msg); } catch (e) {}
+}
 
 var state = { auto: load("auto", true), tab: "s", fio: load("fio", ""), group: load("group", ""), sheets: load("sheets", []), favs: load("favs", []), q: "", loading: false, day: null, problem: null, lastLoaded: [] };
 
@@ -681,7 +684,8 @@ function renderSchedule(v) {
   if (canCalendar()) h += '<button class="btn primary" type="button" data-act="cal">🔔 Напоминания о парах в Календарь</button>';
   h += '<div class="row2"><label class="btn" for="pdfInput">Загрузить PDF</label><button class="btn" type="button" data-act="group">Сменить группу</button></div>';
   if (NATIVE) h += '<button class="btn" type="button" data-act="auto">' + (state.auto ? "▶ Автовход на пары: включён" : "⏸ Автовход на пары: выключен") + "</button>";
-  h += '<p class="hint">' + (NATIVE ? "Перед каждой парой придёт уведомление. Нажми на него, и приложение само войдёт с твоим ФИО." : "«Войти» копирует твоё ФИО и открывает конференцию.") + " Даты и время сверяй с официальным расписанием.</p>";
+  h += '<p class="hint">' + (WIN ? (state.auto ? "Ноутбук сам проснётся перед парой и зайдёт на неё с твоим ФИО (только слушать). Держи его на зарядке." : "Автовход выключен: перед парой придёт только уведомление.") :
+    NATIVE ? "Перед каждой парой придёт уведомление. Нажми на него, и приложение само войдёт с твоим ФИО." : "«Войти» копирует твоё ФИО и открывает конференцию.") + " Даты и время сверяй с официальным расписанием.</p>";
   v.innerHTML = h + howto();
 }
 
