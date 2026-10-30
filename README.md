@@ -31,6 +31,15 @@
 
 Уведомления о парах: после загрузки PDF нажми «Напоминания о парах в Календарь» → «Добавить все». За 3 минуты до каждой пары iPhone пришлёт уведомление, в событии будет ссылка для входа.
 
+## КНН домашка (отдельное приложение)
+
+Находит задания преподавателей в папке MAX (фото листков, PDF, Word), красиво показывает их и по кнопке делает конспект через Claude: расшифровывает почерк, раскладывает по предметам, напоминает о сроках сдачи.
+
+- **[⇩ Android: KNN-domashka.apk](https://github.com/poddon/knn-pary/releases/download/latest/KNN-domashka.apk)**
+- **[⇩ Windows: KNN-domashka.exe](https://github.com/poddon/knn-pary/releases/download/latest/KNN-domashka.exe)**
+
+Нужен ключ Claude API (console.anthropic.com → API Keys), он вводится в настройках ⚙ и хранится только на устройстве. Код: `homework/`.
+
 ## Админ: общее расписание для всех
 
 **[poddon.github.io/knn-pary/admin.html](https://poddon.github.io/knn-pary/admin.html)**

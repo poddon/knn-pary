@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>КНН домашка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@600&display=swap">
+<style>
+/* Layout: green header band with tabs over one column of cards (max 720px); full-screen sheets for viewer, note and settings */
+:root {
+  --brand: #0E7C66; --brand-2: #1FA88A; --brand-ink: #0A4F42; --on-brand: #FFFFFF; --on-primary: #FFFFFF;
+  --bg: #F1F5F3; --card: #FFFFFF; --fg: #17201D; --muted: #66746F; --line: #DFE7E3; --soft: #E3F2ED;
+  --warn: #B25E00; --warn-soft: #FFF1DD; --bad: #C2362F; --bad-soft: #FCE9E7; --ok: #1C8A4E; --ok-soft: #E2F5EA;
+  --pdf: #D2463B; --doc: #2F5FD0; --img: #8A4FD0; --txt: #5F6B67;
+  --shadow: 0 1px 2px rgba(23,32,29,.06), 0 4px 14px rgba(14,124,102,.07);
+  --f-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --f-body: "Golos Text", -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  --f-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --brand: #35C2A2; --brand-2: #127A64; --brand-ink: #083A31; --on-brand: #FFFFFF; --on-primary: #06281F;
+  --bg: #0E1513; --card: #17211E; --fg: #E5EFEB; --muted: #93A49E; --line: #26332F; --soft: #1A3730;
+  --warn: #FFB55C; --warn-soft: #3A2A12; --bad: #FF8B84; --bad-soft: #3A1916; --ok: #5FD394; --ok-soft: #133524;
+  --pdf: #FF7B70; --doc: #7FA2FF; --img: #C29BFF; --txt: #A9B5B0;
+  --shadow: 0 1px 2px rgba(0,0,0,.35); color-scheme: dark } }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--brand-ink); }
+button, input, select, textarea { font: inherit; color: inherit; }
+.wrap { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+:focus-visible { outline: 2.5px solid var(--brand); outline-offset: 2px; }
+
+header.top { background: linear-gradient(135deg, var(--brand-ink), var(--brand) 55%, var(--brand-2)); color: var(--on-brand); border-radius: 0 0 26px 26px; }
+header.top .wrap { padding-block: 16px 14px; display: grid; gap: 12px; }
+.titlerow { display: flex; align-items: center; gap: 10px; }
+.titlerow h1 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0; flex: 1; letter-spacing: -.01em; }
+.titlerow p { margin: 0; }
+.iconbtn { border: 1.5px solid rgba(255,255,255,.5); background: rgba(255,255,255,.16); color: #FFFFFF; border-radius: 999px; min-width: 40px; height: 40px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-weight: 600; }
+.sub { font-size: 13.5px; opacity: .9; }
+.seg { display: flex; background: rgba(255,255,255,.18); border-radius: 14px; padding: 4px; }
+.seg button { flex: 1; border: 0; background: none; color: rgba(255,255,255,.92); font-weight: 600; padding: 9px 0; border-radius: 11px; cursor: pointer; position: relative; }
+.seg button[aria-selected="true"] { background: #FFFFFF; color: #0A4F42; }
+.seg .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: #F0B429; color: #3A2600; font-size: 11px; line-height: 18px; }
+header :focus-visible { outline-color: #FFFFFF; }
+
+main .wrap { padding-block: 14px 40px; display: grid; gap: 10px; }
+.card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 14px; min-width: 0; }
+.label { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 10px 4px 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.btn { display: inline-flex; justify-content: center; align-items: center; gap: 8px; border-radius: 14px; padding: 12px 14px; font-weight: 600; cursor: pointer; border: 1.5px solid color-mix(in srgb, var(--brand) 35%, transparent); background: var(--card); color: var(--brand); text-align: center; }
+.btn.primary { background: var(--brand); color: var(--on-primary); border-color: var(--brand); }
+.btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
+.btn.slim { padding: 8px 12px; border-radius: 12px; font-size: 14px; }
+.btn:disabled { opacity: .55; cursor: default; }
+.chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 1px; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 1.5px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 13.5px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--brand); background: var(--soft); color: var(--brand); }
+.empty { text-align: center; padding: 34px 12px; display: grid; gap: 8px; justify-items: center; }
+.empty b { font-size: 17px; }
+.empty span { color: var(--muted); font-size: 14px; max-width: 420px; }
+.folders { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13.5px; color: var(--muted); }
+.folders code { font-family: var(--f-mono); font-size: 12.5px; background: var(--soft); color: var(--fg); border-radius: 7px; padding: 2px 7px; }
+
+.file { display: flex; gap: 12px; align-items: center; cursor: pointer; text-align: left; width: 100%; border: 0; }
+.thumb { width: 56px; height: 56px; border-radius: 12px; flex: none; background: var(--soft) center / cover no-repeat; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: #FFFFFF; letter-spacing: .04em; overflow: hidden; }
+.thumb.pdf { background-color: var(--pdf); } .thumb.doc { background-color: var(--doc); } .thumb.txt { background-color: var(--txt); } .thumb.img { background-color: var(--img); }
+.fmeta { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.fname { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fsub { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pill { border-radius: 9px; padding: 2px 8px; font-size: 12px; font-weight: 700; white-space: nowrap; display: inline-block; }
+.pill.new { background: #F0B429; color: #3A2600; }
+.pill.done { background: var(--ok-soft); color: var(--ok); }
+.pill.dl { background: var(--warn-soft); color: var(--warn); }
+.pill.late { background: var(--bad-soft); color: var(--bad); }
+.pill.subj { background: var(--soft); color: var(--brand); }
+
+.subject { padding: 0; overflow: hidden; }
+.subject > summary { list-style: none; cursor: pointer; padding: 14px; display: flex; gap: 10px; align-items: center; }
+.subject > summary::-webkit-details-marker { display: none; }
+.subject > summary b { flex: 1; min-width: 0; font-size: 16px; }
+.subject > summary::after { content: "›"; font-size: 22px; color: var(--muted); transition: transform .15s; }
+.subject[open] > summary::after { transform: rotate(90deg); }
+.notes { display: grid; border-top: 1px solid var(--line); }
+.note { display: grid; gap: 4px; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; cursor: pointer; }
+.note:last-child { border-bottom: 0; }
+.note .nt { font-weight: 600; }
+.note .np { color: var(--muted); font-size: 13.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.dl-item { display: flex; gap: 12px; align-items: flex-start; }
+.dl-item input { width: 22px; height: 22px; margin-top: 2px; accent-color: var(--brand); flex: none; }
+.dl-date { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 64px; }
+.dl-item.done .dl-text { text-decoration: line-through; color: var(--muted); }
+
+/* full-screen sheets */
+.sheet { position: fixed; inset: 0; background: var(--bg); z-index: 20; display: flex; flex-direction: column; }
+.sheet .bar { background: var(--card); box-shadow: var(--shadow); padding-top: env(safe-area-inset-top, 0px); }
+.sheet .bar .wrap { display: flex; gap: 8px; align-items: center; padding-block: 10px; }
+.sheet .bar h2 { margin: 0; font-size: 16px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.back { border: 0; background: var(--soft); color: var(--brand); width: 40px; height: 40px; border-radius: 12px; font-size: 20px; cursor: pointer; flex: none; }
+.sheet .body { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
+.sheet .body .wrap { padding-block: 14px 24px; display: grid; gap: 12px; }
+.sheet .foot { background: var(--card); box-shadow: 0 -4px 18px rgba(0,0,0,.07); }
+.sheet .foot .wrap { padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.page { background: #FFFFFF; border-radius: 10px; box-shadow: var(--shadow); max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.docx { background: #FFFFFF; color: #17201D; border-radius: 12px; padding: 18px; box-shadow: var(--shadow); overflow-x: auto; }
+.docx table { border-collapse: collapse; } .docx td, .docx th { border: 1px solid #CCD; padding: 4px 6px; }
+.docx img { max-width: 100%; height: auto; }
+pre.txt { white-space: pre-wrap; word-break: break-word; background: var(--card); border-radius: 12px; padding: 14px; margin: 0; font-family: var(--f-body); }
+
+.md { line-height: 1.55; }
+.md h1, .md h2, .md h3 { line-height: 1.25; margin: 14px 0 6px; text-wrap: balance; }
+.md h1 { font-size: 20px; } .md h2 { font-size: 17.5px; } .md h3 { font-size: 16px; }
+.md > :first-child { margin-top: 0; }
+.md p { margin: 6px 0; } .md ul, .md ol { margin: 6px 0; padding-left: 22px; } .md li { margin: 3px 0; }
+.md code { font-family: var(--f-mono); background: var(--soft); border-radius: 6px; padding: 1px 5px; font-size: 13px; }
+.md table { border-collapse: collapse; margin: 8px 0; font-size: 14px; display: block; overflow-x: auto; }
+.md th, .md td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+.md blockquote { margin: 8px 0; padding: 4px 12px; border-left: 3px solid var(--brand); color: var(--muted); }
+.task { background: var(--warn-soft); color: var(--fg); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; }
+.task b { color: var(--warn); }
+details.raw summary { cursor: pointer; font-weight: 600; }
+details.raw pre { white-space: pre-wrap; word-break: break-word; font-family: var(--f-body); font-size: 14px; margin: 10px 0 0; color: var(--muted); }
+
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 13px; font-weight: 600; color: var(--muted); }
+.input { width: 100%; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 11px 12px; font-size: 15px; min-width: 0; }
+.msg { border-radius: 12px; padding: 10px 12px; font-size: 14px; white-space: pre-line; }
+.msg.ok { background: var(--ok-soft); color: var(--ok); } .msg.bad { background: var(--bad-soft); color: var(--bad); } .msg.warn { background: var(--warn-soft); color: var(--warn); }
+.progress { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 26px 10px; }
+.spinner { width: 34px; height: 34px; border: 3.5px solid var(--soft); border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 11px 16px; border-radius: 14px; font-size: 14px; z-index: 40; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.2); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="titlerow">
+      <div class="grow"><h1>КНН домашка</h1><p class="sub" id="sub">Задания и конспекты из MAX</p></div>
+      <button class="iconbtn" type="button" id="refreshBtn" aria-label="Обновить список файлов">⟳</button>
+      <button class="iconbtn" type="button" id="settingsBtn" aria-label="Настройки">⚙</button>
+    </div>
+    <div class="seg" role="tablist">
+      <button type="button" role="tab" id="tabF" aria-selected="true">Файлы</button>
+      <button type="button" role="tab" id="tabN" aria-selected="false">Конспекты</button>
+      <button type="button" role="tab" id="tabD" aria-selected="false">Сроки</button>
+    </div>
+  </div>
+</header>
+<main><div class="wrap" id="view"></div></main>
+
+<section class="sheet" id="viewer" hidden aria-modal="true" role="dialog">
+  <div class="bar"><div class="wrap"><button class="back" type="button" data-close="viewer" aria-label="Назад">←</button><h2 id="vTitle"></h2></div></div>
+  <div class="body"><div class="wrap" id="vBody"></div></div>
+  <div class="foot"><div class="wrap" id="vFoot"></div></div>
+</section>
+<section class="sheet" id="noteSheet" hidden aria-modal="true" role="dialog">
+  <div class="bar"><div class="wrap"><button class="back" type="button" data-close="noteSheet" aria-label="Назад">←</button><h2 id="nTitle"></h2></div></div>
+  <div class="body"><div class="wrap" id="nBody"></div></div>
+</section>
+<section class="sheet" id="settings" hidden aria-modal="true" role="dialog">
+  <div class="bar"><div class="wrap"><button class="back" type="button" data-close="settings" aria-label="Назад">←</button><h2>Настройки</h2></div></div>
+  <div class="body"><div class="wrap" id="sBody"></div></div>
+</section>
+<input type="file" id="fileInput" multiple accept="image/*,application/pdf,.pdf,.docx,.txt" hidden>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script>
+"use strict";
+/* ================= storage ================= */
+function load(k, d) { try { var v = localStorage.getItem("dz." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+function save(k, v) { try { localStorage.setItem("dz." + k, JSON.stringify(v)); } catch (e) {} }
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function toast(m) { var t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 3800); }
+try { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; } catch (e) {}
+
+var S = {
+  tab: "f", filter: "all", files: [], folders: [], listing: false,
+  notes: load("notes", []),        // {id, fileId, fileName, created, subject, title, isHomework, task, deadline, done, transcript, notes}
+  seen: load("seen", {}),          // fileId -> true once opened
+  hidden: load("hidden", {}),      // fileId -> true
+  settings: load("settings", { key: "", model: "claude-sonnet-5-5", base: "https://api.anthropic.com", group: "", remindEve: true, remindMorning: true }),
+  subjects: load("subjects", []),
+  busy: {}                          // fileId -> true while a note is being made
+};
+var browserFiles = [];              // files added in a plain browser (no app)
+
+/* ================= native bridge (Android / Windows) ================= */
+var NATIVE = !!(window.AndroidBridge || (window.chrome && window.chrome.webview));
+var pending = {}, seq = 0;
+window.nativeResult = function (id, data) { var p = pending[id]; if (p) { delete pending[id]; p(data); } };
+window.nativeEvent = function (name, data) {
+  if (name === "folders") { S.folders = data || []; listFiles(); }
+  if (name === "files-changed") listFiles();
+  if (name === "show-file" && data) { listFiles().then(function () { var f = S.files.find(function (x) { return x.id === data; }); if (f) openFile(f); }); }
+};
+if (window.chrome && window.chrome.webview) window.chrome.webview.addEventListener("message", function (e) {
+  var m = e.data || {}; if (m.id) window.nativeResult(m.id, m.result); else if (m.event) window.nativeEvent(m.event, m.data);
+});
+function call(method, args) {
+  return new Promise(function (resolve) {
+    var id = "r" + (++seq); pending[id] = resolve;
+    try {
+      if (window.AndroidBridge) window.AndroidBridge.call(id, method, JSON.stringify(args || {}));
+      else if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage({ id: id, method: method, args: args || {} });
+      else { delete pending[id]; resolve(null); }
+    } catch (e) { delete pending[id]; resolve(null); }
+  });
+}
+
+/* ================= files ================= */
+function kind(f) {
+  var n = (f.name || "").toLowerCase(), m = f.mime || "";
+  if (m.indexOf("image/") === 0 || /\.(jpe?g|png|webp|gif|bmp)$/.test(n)) return "img";
+  if (m === "application/pdf" || /\.pdf$/.test(n)) return "pdf";
+  if (/wordprocessingml/.test(m) || /\.docx$/.test(n)) return "doc";
+  if (m.indexOf("text/") === 0 || /\.txt$/.test(n)) return "txt";
+  return "";
+}
+var KIND_LABEL = { img: "Фото", pdf: "PDF", doc: "Word", txt: "Текст" };
+
+function listFiles() {
+  if (!NATIVE) { S.files = browserFiles.slice(); render(); return Promise.resolve(); }
+  S.listing = true; render();
+  return Promise.all([call("folders"), call("list")]).then(function (r) {
+    S.folders = r[0] || [];
+    S.files = (r[1] || []).filter(function (f) { return kind(f); }).sort(function (a, b) { return b.mtime - a.mtime; });
+    S.listing = false; render();
+  });
+}
+function noteFor(fileId) { for (var i = S.notes.length - 1; i >= 0; i--) if (S.notes[i].fileId === fileId) return S.notes[i]; return null; }
+function sizeText(b) { return b > 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " МБ" : Math.max(1, Math.round(b / 1024)) + " КБ"; }
+function two(n) { return ("0" + n).slice(-2); }
+function dayLabel(ms) {
+  var d = new Date(ms), t = new Date(); t.setHours(0, 0, 0, 0);
+  var diff = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - t) / 86400000);
+  if (diff === 0) return "Сегодня"; if (diff === -1) return "Вчера";
+  return two(d.getDate()) + "." + two(d.getMonth() + 1) + (d.getFullYear() !== t.getFullYear() ? "." + d.getFullYear() : "");
+}
+function timeText(ms) { var d = new Date(ms); return two(d.getHours()) + ":" + two(d.getMinutes()); }
+
+/* ================= render ================= */
+function render() {
+  $("tabF").setAttribute("aria-selected", S.tab === "f");
+  $("tabN").setAttribute("aria-selected", S.tab === "n");
+  $("tabD").setAttribute("aria-selected", S.tab === "d");
+  var open = upcoming().filter(function (n) { return !n.done; }).length;
+  $("tabD").innerHTML = "Сроки" + (open ? '<span class="count">' + open + "</span>" : "");
+  var g = S.settings.group;
+  $("sub").textContent = g ? "Группа " + g + " · задания из MAX" : "Задания и конспекты из MAX";
+  if (S.tab === "f") renderFiles(); else if (S.tab === "n") renderNotes(); else renderDeadlines();
+}
+
+function renderFiles() {
+  var v = $("view"), h = "";
+  if (!S.settings.key) h += '<div class="msg warn">Чтобы делать конспекты, добавь ключ Claude в настройках ⚙.</div>';
+  if (NATIVE) {
+    h += '<div class="folders">' + (S.folders.length ? "Папки: " + S.folders.map(function (f) { return "<code>" + esc(f.label) + "</code>"; }).join(" ") : "Папка не выбрана") +
+      ' <button class="btn slim" type="button" data-act="folders">' + (S.folders.length ? "Изменить" : "Выбрать папку") + "</button></div>";
+  }
+  if (S.listing && !S.files.length) { v.innerHTML = h + '<div class="progress"><div class="spinner"></div><span class="muted">Ищу файлы…</span></div>'; return; }
+  if (NATIVE && !S.folders.length && !S.files.length) {
+    v.innerHTML = h + '<div class="card empty"><b>Выбери папку с файлами из MAX</b><span>Обычно это <code>Download/Max</code>. Если преподаватели присылают задания в чат «КНН», сохраняй файлы оттуда, и они появятся здесь сами. Можно и просто «Поделиться» файлом из MAX в «КНН домашку».</span>' +
+      '<button class="btn primary" type="button" data-act="pick">Выбрать папку</button><button class="btn" type="button" data-act="add">Добавить файл</button></div>';
+    return;
+  }
+  var all = S.files.filter(function (f) { return !S.hidden[f.id]; });
+  var counts = { all: all.length, new: 0, todo: 0 };
+  all.forEach(function (f) { if (!S.seen[f.id]) counts.new++; if (!noteFor(f.id)) counts.todo++; });
+  h += '<div class="chips">' + [["all", "Все"], ["new", "Новые"], ["todo", "Без конспекта"]].map(function (c) {
+    return '<button class="chip" type="button" data-filter="' + c[0] + '" aria-pressed="' + (S.filter === c[0]) + '">' + c[1] + " · " + counts[c[0]] + "</button>";
+  }).join("") + "</div>";
+  var list = all.filter(function (f) { return S.filter === "all" || (S.filter === "new" ? !S.seen[f.id] : !noteFor(f.id)); });
+  if (!list.length) {
+    h += '<div class="card empty"><b>' + (all.length ? "Здесь пусто" : "Файлов пока нет") + "</b><span>" +
+      (all.length ? "Попробуй другой фильтр." : NATIVE ? "Сохрани задание из MAX в выбранную папку или поделись им в «КНН домашку»." : "Добавь фото листка, PDF или Word-файл с заданием.") + "</span>" +
+      (all.length ? "" : '<button class="btn primary" type="button" data-act="add">Добавить файл</button>') + "</div>";
+    v.innerHTML = h; return;
+  }
+  var lastDay = "";
+  list.forEach(function (f) {
+    var dl = dayLabel(f.mtime);
+    if (dl !== lastDay) { h += '<div class="label">' + dl + "</div>"; lastDay = dl; }
+    var k = kind(f), n = noteFor(f.id), status = "";
+    if (S.busy[f.id]) status = '<span class="pill subj">Делаю конспект…</span>';
+    else if (n) status = '<span class="pill done">✓ ' + esc(n.subject || "Конспект") + "</span>" + deadlinePill(n);
+    else if (!S.seen[f.id]) status = '<span class="pill new">Новое</span>';
+    var thumb = k === "img" ? '<span class="thumb" style="background-image:url(&quot;' + esc(f.url) + '&quot;)"></span>' : '<span class="thumb ' + k + '">' + (k === "pdf" ? "PDF" : k === "doc" ? "DOC" : "TXT") + "</span>";
+    h += '<button class="card file" type="button" data-file="' + esc(f.id) + '">' + thumb + '<span class="fmeta"><span class="fname">' + esc(n && n.title ? n.title : f.name) + '</span><span class="fsub">' +
+      esc(KIND_LABEL[k] + " · " + timeText(f.mtime) + " · " + sizeText(f.size || 0) + (n && n.title ? " · " + f.name : "")) + '</span><span class="row">' + status + "</span></span></button>";
+  });
+  if (!NATIVE) h += '<button class="btn" type="button" data-act="add">Добавить файл</button>';
+  v.innerHTML = h;
+}
+
+function deadlinePill(n) {
+  if (!n.deadline || n.done) return "";
+  var d = daysLeft(n.deadline);
+  if (d < 0) return ' <span class="pill late">просрочено ' + fmtDl(n.deadline) + "</span>";
+  return ' <span class="pill dl">' + (d === 0 ? "сдать сегодня" : d === 1 ? "сдать завтра" : "до " + fmtDl(n.deadline)) + "</span>";
+}
+function daysLeft(iso) { var p = iso.split("-"), t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(+p[0], +p[1] - 1, +p[2]) - t) / 86400000); }
+function fmtDl(iso) { var p = iso.split("-"); return p[2] + "." + p[1]; }
+
+function renderNotes() {
+  var v = $("view");
+  if (!S.notes.length) { v.innerHTML = '<div class="card empty"><b>Конспектов пока нет</b><span>Открой файл с заданием или фото листка и нажми «Сделать конспект».</span><button class="btn primary" type="button" data-tab="f">К файлам</button></div>'; return; }
+  var by = {};
+  S.notes.forEach(function (n) { var s = n.subject || "Без предмета"; (by[s] = by[s] || []).push(n); });
+  var subs = Object.keys(by).sort(function (a, b) { return a === "Без предмета" ? 1 : b === "Без предмета" ? -1 : a.localeCompare(b, "ru"); });
+  v.innerHTML = subs.map(function (s, i) {
+    var list = by[s].sort(function (a, b) { return b.created - a.created; });
+    return '<details class="card subject"' + (subs.length <= 3 || i === 0 ? " open" : "") + "><summary><b>" + esc(s) + '</b><span class="pill subj">' + list.length + '</span></summary><div class="notes">' +
+      list.map(function (n) {
+        var first = (n.notes || "").replace(/[#*_>`|-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+        return '<button class="note" type="button" data-note="' + esc(n.id) + '"><span class="row"><span class="nt grow">' + esc(n.title || n.fileName) + '</span><span class="muted small">' + dayLabel(n.created) + "</span></span>" +
+          (n.task ? '<span class="row"><span class="small">📌 ' + esc(n.task.slice(0, 90)) + "</span>" + deadlinePill(n) + "</span>" : "") + '<span class="np">' + esc(first) + "</span></button>";
+      }).join("") + "</div></details>";
+  }).join("");
+}
+
+function upcoming() { return S.notes.filter(function (n) { return n.deadline; }).sort(function (a, b) { return a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0; }); }
+function renderDeadlines() {
+  var v = $("view"), list = upcoming();
+  if (!list.length) { v.innerHTML = '<div class="card empty"><b>Сроков нет</b><span>Когда в задании указан срок сдачи, он появится здесь, и приложение напомнит о нём' + (S.settings.remindEve ? " накануне вечером" : "") + (S.settings.remindMorning ? " и утром в день сдачи" : "") + ".</span></div>"; return; }
+  var open = list.filter(function (n) { return !n.done; }), done = list.filter(function (n) { return n.done; });
+  function item(n) {
+    var d = daysLeft(n.deadline), when = d < 0 ? '<span class="pill late">просрочено</span>' : d === 0 ? '<span class="pill dl">сегодня</span>' : d === 1 ? '<span class="pill dl">завтра</span>' : '<span class="muted small">через ' + d + " дн.</span>";
+    return '<div class="card dl-item' + (n.done ? " done" : "") + '"><input type="checkbox" data-done="' + esc(n.id) + '"' + (n.done ? " checked" : "") + ' aria-label="Сделано"><div class="grow"><div class="row"><span class="dl-date">' + fmtDl(n.deadline) + "</span>" + when + '<span class="pill subj">' + esc(n.subject || "Без предмета") + '</span></div><div class="dl-text">' + esc(n.task || n.title) + '</div><button class="btn slim" type="button" data-note="' + esc(n.id) + '" style="margin-top:8px">Конспект и задание</button></div></div>';
+  }
+  v.innerHTML = (open.length ? '<div class="label">Нужно сдать</div>' + open.map(item).join("") : '<div class="card empty"><b>Всё сдано 🎉</b></div>') + (done.length ? '<div class="label">Сделано</div>' + done.map(item).join("") : "");
+}
+
+/* ================= viewer ================= */
+var current = null;
+function openSheet(id) { $(id).hidden = false; document.body.style.overflow = "hidden"; }
+function closeSheet(id) { $(id).hidden = true; if ($("viewer").hidden && $("noteSheet").hidden && $("settings").hidden) document.body.style.overflow = ""; }
+
+function openFile(f) {
+  current = f;
+  if (!S.seen[f.id]) { S.seen[f.id] = true; save("seen", S.seen); }
+  $("vTitle").textContent = f.name;
+  var body = $("vBody"), k = kind(f);
+  body.innerHTML = '<div class="progress"><div class="spinner"></div></div>';
+  footer();
+  openSheet("viewer");
+  if (k === "img") body.innerHTML = '<img class="page" alt="' + esc(f.name) + '" src="' + esc(f.url) + '">';
+  else if (k === "pdf") showPdf(f, body);
+  else if (k === "doc") fetchBytes(f).then(function (buf) { return mammoth.convertToHtml({ arrayBuffer: buf }); }).then(function (r) { body.innerHTML = '<div class="docx">' + r.value + "</div>"; }).catch(function (e) { body.innerHTML = viewErr(e); });
+  else fetchBytes(f).then(function (buf) { body.innerHTML = '<pre class="txt">' + esc(new TextDecoder().decode(buf)) + "</pre>"; }).catch(function (e) { body.innerHTML = viewErr(e); });
+  render();
+}
+function viewErr(e) { return '<div class="msg bad">Не получилось открыть файл: ' + esc(e && e.message || e) + "</div>"; }
+function footer() {
+  if (!current || $("viewer").hidden && !current) return;
+  var n = noteFor(current.id), busy = S.busy[current.id];
+  $("vFoot").innerHTML = (n ? '<button class="btn primary" type="button" data-note="' + esc(n.id) + '">Открыть конспект</button>' :
+    '<button class="btn primary" type="button" data-act="make"' + (busy ? " disabled" : "") + ">" + (busy ? "Делаю конспект…" : "✨ Сделать конспект") + "</button>") +
+    '<button class="btn" type="button" data-act="more" aria-label="Ещё">⋯</button>';
+}
+function fetchBytes(f) { return fetch(f.url).then(function (r) { if (!r.ok) throw new Error("файл недоступен (" + r.status + ")"); return r.arrayBuffer(); }); }
+function showPdf(f, body) {
+  fetchBytes(f).then(function (buf) { return pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise; }).then(function (doc) {
+    body.innerHTML = "";
+    var w = Math.min(body.clientWidth || 700, 900), p = Promise.resolve();
+    for (var i = 1; i <= Math.min(doc.numPages, 40); i++) (function (i) {
+      p = p.then(function () { return doc.getPage(i); }).then(function (page) {
+        var vp0 = page.getViewport({ scale: 1 }), ratio = window.devicePixelRatio || 1, vp = page.getViewport({ scale: (w / vp0.width) * ratio });
+        var c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height; c.className = "page"; c.style.width = "100%";
+        body.appendChild(c);
+        return page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+      });
+    })(i);
+    return p;
+  }).catch(function (e) { body.innerHTML = viewErr(e); });
+}
+
+function moreMenu() {
+  var f = current; if (!f) return;
+  var n = noteFor(f.id);
+  $("vFoot").innerHTML = '<div class="row" style="grid-column:1/-1">' +
+    (NATIVE ? '<button class="btn slim" type="button" data-act="external">Открыть в другом приложении</button>' : "") +
+    (n ? '<button class="btn slim" type="button" data-act="remake">Сделать конспект заново</button>' : "") +
+    '<button class="btn slim danger" type="button" data-act="hide">Убрать из списка</button>' +
+    '<button class="btn slim" type="button" data-act="less">Назад</button></div>';
+}
+
+/* ================= Claude ================= */
+function b64(buf) { var bytes = new Uint8Array(buf), bin = ""; for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); }
+function imageBlock(f) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image(); img.crossOrigin = "anonymous";
+    img.onload = function () {
+      var max = 2000, s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      var c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      var x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+      resolve({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: c.toDataURL("image/jpeg", 0.88).split(",")[1] } });
+    };
+    img.onerror = function () { reject(new Error("не удалось прочитать изображение")); };
+    img.src = f.url;
+  });
+}
+function contentFor(f) {
+  var k = kind(f);
+  if (k === "img") return imageBlock(f).then(function (b) { return [b]; });
+  if (k === "pdf") return fetchBytes(f).then(function (buf) {
+    if (buf.byteLength > 30 * 1048576) throw new Error("PDF больше 30 МБ, Claude такой не примет");
+    return [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64(buf) } }];
+  });
+  if (k === "doc") return fetchBytes(f).then(function (buf) { return mammoth.extractRawText({ arrayBuffer: buf }); }).then(function (r) { return [{ type: "text", text: "Текст документа «" + f.name + "»:\n\n" + r.value }]; });
+  return fetchBytes(f).then(function (buf) { return [{ type: "text", text: "Текст файла «" + f.name + "»:\n\n" + new TextDecoder().decode(buf) }]; });
+}
+var WD = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+function prompt(f) {
+  var t = new Date(), today = t.getFullYear() + "-" + two(t.getMonth() + 1) + "-" + two(t.getDate());
+  var subj = allSubjects();
+  return "Это материал от преподавателя колледжа: файл «" + f.name + "», получен " + dayLabel(f.mtime).toLowerCase() + ". Это может быть фото рукописного листка, домашнее задание или лекция.\n\n" +
+    "1. Аккуратно расшифруй весь рукописный и печатный текст (поле transcript). Неразборчивые места помечай [неразборчиво].\n" +
+    "2. Составь конспект на русском языке в Markdown (поле notes): заголовок, ключевые понятия и определения, основные мысли списками, формулы и таблицы, если они есть. Пиши кратко и понятно для подготовки к занятию. Не добавляй того, чего нет в материале.\n" +
+    "3. Определи предмет" + (subj.length ? " из списка: " + subj.join("; ") + ". Если ни один не подходит, назови предмет сам коротко" : ", назови его коротко") + " (поле subject).\n" +
+    "4. Если это домашнее задание, кратко напиши, что нужно сделать (поле task), и срок сдачи (поле deadline) в формате ГГГГ-ММ-ДД, если срок указан или его можно точно вычислить. Сегодня " + today + ", " + WD[t.getDay()] + ". Если срока нет, deadline = null.\n" +
+    "5. Придумай короткое название (поле title), например «Классификация товаров» или «ДЗ: задачи 1–5».\n\n" +
+    'Ответь только JSON-объектом без пояснений: {"subject": "...", "title": "...", "is_homework": true, "task": "...", "deadline": "ГГГГ-ММ-ДД" или null, "transcript": "...", "notes": "..."}';
+}
+function parseAnswer(text) {
+  var a = text.indexOf("{"), b = text.lastIndexOf("}");
+  if (a >= 0 && b > a) { try { return JSON.parse(text.slice(a, b + 1)); } catch (e) {} }
+  return { title: "", subject: "", notes: text, transcript: "", task: "", deadline: null };
+}
+function claudeError(status, body) {
+  var m = body && body.error && body.error.message || "";
+  if (status === 401) return "Ключ Claude не подходит. Проверь его в настройках.";
+  if (status === 403) return "Claude отказал в доступе" + (/region|country|territor/i.test(m) ? ": сервис недоступен из этого региона. Нужен VPN или адрес прокси в настройках." : ": " + m);
+  if (status === 429) return "Слишком много запросов к Claude. Подожди минуту и попробуй снова.";
+  if (status === 529 || status === 503) return "Claude сейчас перегружен. Попробуй через пару минут.";
+  if (status === 400 && /credit|balance/i.test(m)) return "На счёте Anthropic закончились деньги: пополни баланс в console.anthropic.com.";
+  return "Ошибка Claude (" + status + "): " + (m || "без описания");
+}
+function makeNote(f, force) {
+  if (!S.settings.key) { toast("Сначала добавь ключ Claude в настройках"); openSettings(); return; }
+  if (S.busy[f.id]) return;
+  S.busy[f.id] = true; footer(); render();
+  if (current && current.id === f.id) { var vb = $("vBody"); vb.insertAdjacentHTML("afterbegin", '<div class="progress" id="mk"><div class="spinner"></div><b>Claude читает материал…</b><span class="muted small">Обычно это 20–60 секунд. Можно закрыть файл, конспект доделается сам.</span></div>'); }
+  contentFor(f).then(function (blocks) {
+    blocks.push({ type: "text", text: prompt(f) });
+    return fetch(S.settings.base.replace(/\/+$/, "") + "/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": S.settings.key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: S.settings.model, max_tokens: 8000, system: "Ты помогаешь студенту колледжа разбирать материалы преподавателей: точно читаешь почерк и пишешь понятные конспекты на русском языке.", messages: [{ role: "user", content: blocks }] })
+    });
+  }).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(claudeError(r.status, j)); return j; });
+  }).then(function (j) {
+    var text = (j.content || []).filter(function (c) { return c.type === "text"; }).map(function (c) { return c.text; }).join("\n");
+    var a = parseAnswer(text);
+    var dl = typeof a.deadline === "string" && /^\d{4}-\d{2}-\d{2}$/.test(a.deadline) ? a.deadline : null;
+    if (force) S.notes = S.notes.filter(function (n) { return n.fileId !== f.id; });
+    var n = { id: "n" + Date.now(), fileId: f.id, fileName: f.name, created: Date.now(), subject: (a.subject || "").trim(), title: (a.title || "").trim() || f.name,
+      isHomework: !!a.is_homework, task: (a.task || "").trim(), deadline: dl, done: false, transcript: a.transcript || "", notes: a.notes || "" };
+    S.notes.push(n); save("notes", S.notes);
+    syncReminders();
+    toast("Конспект готов" + (n.subject ? ": " + n.subject : ""));
+    if (current && current.id === f.id && !$("viewer").hidden) { closeSheet("viewer"); showNote(n); }
+  }).catch(function (e) {
+    var m = e && e.message || String(e);
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) m = "Нет связи с Claude. Проверь интернет" + (S.settings.base.indexOf("api.anthropic.com") >= 0 ? " или включи VPN: из России Claude напрямую может быть недоступен." : ".");
+    toast(m);
+    var mk = $("mk"); if (mk) mk.outerHTML = '<div class="msg bad">' + esc(m) + "</div>";
+  }).then(function () { delete S.busy[f.id]; footer(); render(); });
+}
+
+/* ================= note view ================= */
+function md(src) {
+  var lines = String(src || "").replace(/\r/g, "").split("\n"), out = [], list = null, para = [], i = 0;
+  function inline(s) {
+    return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/__([^_]+)__/g, "<b>$1</b>")
+      .replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>").replace(/(^|[\s(])_([^_\s][^_]*)_/g, "$1<i>$2</i>");
+  }
+  function flushP() { if (para.length) { out.push("<p>" + inline(para.join(" ")) + "</p>"); para = []; } }
+  function flushL() { if (list) { out.push("<" + list.t + ">" + list.items.map(function (x) { return "<li>" + inline(x) + "</li>"; }).join("") + "</" + list.t + ">"); list = null; } }
+  for (; i < lines.length; i++) {
+    var l = lines[i], m;
+    if (/^\s*$/.test(l)) { flushP(); flushL(); continue; }
+    if ((m = /^(#{1,6})\s+(.*)$/.exec(l))) { flushP(); flushL(); var lv = Math.min(3, m[1].length); out.push("<h" + lv + ">" + inline(m[2]) + "</h" + lv + ">"); continue; }
+    if (/^\s*\|.*\|\s*$/.test(l) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+      flushP(); flushL();
+      var cells = function (r) { return r.trim().replace(/^\||\|$/g, "").split("|").map(function (c) { return inline(c.trim()); }); };
+      var t = "<table><thead><tr>" + cells(l).map(function (c) { return "<th>" + c + "</th>"; }).join("") + "</tr></thead><tbody>";
+      i += 2; while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { t += "<tr>" + cells(lines[i]).map(function (c) { return "<td>" + c + "</td>"; }).join("") + "</tr>"; i++; }
+      i--; out.push(t + "</tbody></table>"); continue;
+    }
+    if ((m = /^\s*[-*•]\s+(.*)$/.exec(l))) { flushP(); if (!list || list.t !== "ul") { flushL(); list = { t: "ul", items: [] }; } list.items.push(m[1]); continue; }
+    if ((m = /^\s*\d+[.)]\s+(.*)$/.exec(l))) { flushP(); if (!list || list.t !== "ol") { flushL(); list = { t: "ol", items: [] }; } list.items.push(m[1]); continue; }
+    if ((m = /^>\s?(.*)$/.exec(l))) { flushP(); flushL(); out.push("<blockquote>" + inline(m[1]) + "</blockquote>"); continue; }
+    if (/^\s*(-{3,}|\*{3,})\s*$/.test(l)) { flushP(); flushL(); out.push("<hr>"); continue; }
+    flushL(); para.push(l.trim());
+  }
+  flushP(); flushL();
+  return out.join("");
+}
+var shownNote = null;
+function showNote(n) {
+  shownNote = n;
+  $("nTitle").textContent = n.title || n.fileName;
+  var f = S.files.find(function (x) { return x.id === n.fileId; });
+  var h = '<div class="row"><span class="pill subj">' + esc(n.subject || "Без предмета") + '</span><span class="muted small">' + dayLabel(n.created) + " · " + esc(n.fileName) + "</span></div>";
+  if (n.task || n.deadline) h += '<div class="task"><b>Задание' + (n.deadline ? " · срок " + fmtDl(n.deadline) + (n.done ? " · сделано" : "") : "") + "</b><span>" + esc(n.task || "Срок сдачи указан в материале") + "</span>" +
+    (n.deadline ? '<label class="row small"><input type="checkbox" data-done="' + esc(n.id) + '"' + (n.done ? " checked" : "") + "> Сделано</label>" : "") + "</div>";
+  h += '<article class="card md">' + md(n.notes) + "</article>";
+  if (n.transcript) h += '<details class="card raw"><summary>Расшифровка листка</summary><pre>' + esc(n.transcript) + "</pre></details>";
+  h += '<div class="row">' + (f ? '<button class="btn slim" type="button" data-file="' + esc(f.id) + '">Исходный файл</button>' : "") +
+    '<button class="btn slim" type="button" data-act="copy">Копировать конспект</button><button class="btn slim" type="button" data-act="subject">Изменить предмет</button>' +
+    '<button class="btn slim danger" type="button" data-act="delnote">Удалить</button></div><div id="nExtra"></div>';
+  $("nBody").innerHTML = h;
+  openSheet("noteSheet");
+}
+function allSubjects() {
+  var set = {};
+  S.subjects.forEach(function (s) { set[s] = 1; });
+  S.notes.forEach(function (n) { if (n.subject) set[n.subject] = 1; });
+  return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, "ru"); });
+}
+
+/* ================= reminders ================= */
+function syncReminders() {
+  var items = [], now = Date.now();
+  S.notes.forEach(function (n) {
+    if (!n.deadline || n.done) return;
+    var p = n.deadline.split("-"), what = (n.subject ? n.subject + ": " : "") + (n.task || n.title);
+    if (S.settings.remindEve) { var e = new Date(+p[0], +p[1] - 1, +p[2] - 1, 19, 0).getTime(); if (e > now) items.push({ at: e, title: "Завтра сдавать", text: what, note: n.id }); }
+    if (S.settings.remindMorning) { var m = new Date(+p[0], +p[1] - 1, +p[2], 8, 0).getTime(); if (m > now) items.push({ at: m, title: "Сегодня срок сдачи", text: what, note: n.id }); }
+  });
+  items.sort(function (a, b) { return a.at - b.at; });
+  call("setReminders", { items: items.slice(0, 60) });
+}
+
+/* ================= subjects from the КНН пары schedule ================= */
+function loadSubjects() {
+  var g = (S.settings.group || "").replace(/\s+/g, "").toUpperCase();
+  if (!g) return;
+  var lat = "AKBCEMHPTXO", cyr = "АКВСЕМНРТХО";
+  function norm(x) { return x.toUpperCase().replace(/\s+/g, "").split("").map(function (c) { var i = lat.indexOf(c); return i >= 0 ? cyr[i] : c; }).join(""); }
+  fetch("https://raw.githubusercontent.com/poddon/knn-pary/data/schedule.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+    var set = {};
+    S.subjects.forEach(function (s) { set[s] = 1; });
+    (d.sheets || []).forEach(function (sh) { (sh.columns || []).forEach(function (c) {
+      if (!(c.groups || []).some(function (x) { return norm(x) === norm(g); })) return;
+      (c.lessons || []).forEach(function (l) { if (l.subject) set[l.subject.replace(/\s+/g, " ").trim()] = 1; });
+    }); });
+    S.subjects = Object.keys(set).sort(function (a, b) { return a.localeCompare(b, "ru"); }).slice(0, 60);
+    save("subjects", S.subjects);
+  }).catch(function () {});
+}
+
+/* ================= settings ================= */
+function openSettings() {
+  var s = S.settings;
+  $("sBody").innerHTML =
+    '<section class="card" style="display:grid;gap:12px"><b>Claude</b>' +
+    '<label class="field"><span>Ключ API (начинается с sk-ant-)</span><input class="input" id="sKey" type="password" autocomplete="off" value="' + esc(s.key) + '" placeholder="sk-ant-…"></label>' +
+    '<p class="muted small" style="margin:0">Ключ создаётся на console.anthropic.com → API Keys. Он хранится только на этом устройстве. Каждый конспект стоит примерно 1–3 ₽.</p>' +
+    '<label class="field"><span>Модель</span><select class="input" id="sModel">' + [["claude-sonnet-5-5", "Sonnet 5.5 — быстро и точно (рекомендую)"], ["claude-opus-5-5", "Opus 5.5 — лучше всех читает почерк, дороже"], ["claude-haiku-5-5", "Haiku 5.5 — самый дешёвый"]].map(function (m) { return '<option value="' + m[0] + '"' + (s.model === m[0] ? " selected" : "") + ">" + m[1] + "</option>"; }).join("") + "</select></label>" +
+    '<label class="field"><span>Адрес API (менять, только если нужен прокси)</span><input class="input" id="sBase" value="' + esc(s.base) + '"></label>' +
+    '<button class="btn" type="button" data-act="test">Проверить ключ</button><div id="sMsg"></div></section>' +
+    '<section class="card" style="display:grid;gap:12px"><b>Предметы</b>' +
+    '<label class="field"><span>Моя группа (возьму предметы из расписания «КНН пары»)</span><input class="input" id="sGroup" value="' + esc(s.group) + '" placeholder="например, 1515А" autocapitalize="characters"></label>' +
+    '<p class="muted small" style="margin:0">' + (S.subjects.length ? "Предметы: " + esc(S.subjects.join(", ")) : "Предметов из расписания пока нет.") + "</p></section>" +
+    '<section class="card" style="display:grid;gap:10px"><b>Напоминания о сроках</b>' +
+    '<label class="row"><input type="checkbox" id="sEve"' + (s.remindEve ? " checked" : "") + "> Накануне в 19:00</label>" +
+    '<label class="row"><input type="checkbox" id="sMorn"' + (s.remindMorning ? " checked" : "") + "> В день сдачи в 08:00</label></section>" +
+    (NATIVE ? '<section class="card" style="display:grid;gap:10px"><b>Папки с файлами</b>' + (S.folders.length ? S.folders.map(function (f) { return '<div class="row"><code class="grow" style="font-family:var(--f-mono);font-size:13px">' + esc(f.label) + '</code><button class="btn slim danger" type="button" data-rmfolder="' + esc(f.id) + '">Убрать</button></div>'; }).join("") : '<p class="muted small" style="margin:0">Папок нет.</p>') +
+      '<button class="btn" type="button" data-act="pick">Добавить папку</button></section>' : "") +
+    '<button class="btn primary" type="button" data-act="savesettings">Сохранить</button>';
+  openSheet("settings");
+}
+function readSettings() {
+  var s = S.settings;
+  s.key = $("sKey").value.trim(); s.model = $("sModel").value; s.base = $("sBase").value.trim() || "https://api.anthropic.com";
+  var g = $("sGroup").value.replace(/\s+/g, "").toUpperCase(), changed = g !== s.group; s.group = g;
+  s.remindEve = $("sEve").checked; s.remindMorning = $("sMorn").checked;
+  save("settings", s);
+  return changed;
+}
+function testKey() {
+  readSettings();
+  var m = $("sMsg"); m.className = "msg"; m.textContent = "Проверяю…";
+  fetch(S.settings.base.replace(/\/+$/, "") + "/v1/messages", { method: "POST", headers: { "content-type": "application/json", "x-api-key": S.settings.key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+    body: JSON.stringify({ model: S.settings.model, max_tokens: 5, messages: [{ role: "user", content: "Ответь словом: да" }] }) })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(claudeError(r.status, j)); }); })
+    .then(function () { m.className = "msg ok"; m.textContent = "Ключ работает, можно делать конспекты."; })
+    .catch(function (e) { var t = e.message; if (/Failed to fetch|NetworkError|Load failed/i.test(t)) t = "Нет связи с Claude. Проверь интернет или включи VPN."; m.className = "msg bad"; m.textContent = t; });
+}
+
+/* ================= events ================= */
+$("tabF").onclick = function () { S.tab = "f"; render(); };
+$("tabN").onclick = function () { S.tab = "n"; render(); };
+$("tabD").onclick = function () { S.tab = "d"; render(); };
+$("settingsBtn").onclick = openSettings;
+$("refreshBtn").onclick = function () { listFiles(); loadSubjects(); toast("Обновляю список файлов"); };
+$("fileInput").onchange = function () {
+  [].slice.call(this.files).forEach(function (file) {
+    browserFiles.unshift({ id: "b" + Date.now() + Math.random().toString(36).slice(2), name: file.name, mime: file.type, size: file.size, mtime: file.lastModified || Date.now(), url: URL.createObjectURL(file) });
+  });
+  this.value = ""; listFiles();
+};
+document.addEventListener("click", function (e) {
+  var t = e.target, el;
+  if ((el = t.closest("[data-close]"))) { closeSheet(el.getAttribute("data-close")); if (el.getAttribute("data-close") === "viewer") current = null; render(); return; }
+  if ((el = t.closest("[data-tab]"))) { S.tab = el.getAttribute("data-tab"); render(); return; }
+  if ((el = t.closest("[data-filter]"))) { S.filter = el.getAttribute("data-filter"); render(); return; }
+  if ((el = t.closest("[data-file]"))) { var f = S.files.find(function (x) { return x.id === el.getAttribute("data-file"); }); if (f) { if (!$("noteSheet").hidden) closeSheet("noteSheet"); openFile(f); } return; }
+  if ((el = t.closest("[data-note]"))) { var n = S.notes.find(function (x) { return x.id === el.getAttribute("data-note"); }); if (n) { if (!$("viewer").hidden) closeSheet("viewer"); showNote(n); } return; }
+  if ((el = t.closest("[data-rmfolder]"))) { call("removeFolder", { id: el.getAttribute("data-rmfolder") }).then(function () { return listFiles(); }).then(openSettings); return; }
+  if (!(el = t.closest("[data-act]"))) return;
+  var a = el.getAttribute("data-act");
+  if (a === "pick" || a === "folders") { if (a === "folders") { openSettings(); return; } call("pickFolder"); return; }
+  if (a === "add") { if (NATIVE) call("addFiles"); else $("fileInput").click(); return; }
+  if (a === "make") { makeNote(current); return; }
+  if (a === "remake") { footer(); makeNote(current, true); return; }
+  if (a === "more") { moreMenu(); return; }
+  if (a === "less") { footer(); return; }
+  if (a === "external") { call("open", { id: current.id }); return; }
+  if (a === "hide") { S.hidden[current.id] = true; save("hidden", S.hidden); closeSheet("viewer"); current = null; render(); toast("Файл убран из списка"); return; }
+  if (a === "test") { testKey(); return; }
+  if (a === "savesettings") { var ch = readSettings(); closeSheet("settings"); syncReminders(); if (ch) loadSubjects(); render(); toast("Сохранено"); return; }
+  if (a === "copy" && shownNote) {
+    var txt = shownNote.title + "\n\n" + (shownNote.task ? "Задание: " + shownNote.task + (shownNote.deadline ? " (срок " + fmtDl(shownNote.deadline) + ")" : "") + "\n\n" : "") + shownNote.notes;
+    try { navigator.clipboard.writeText(txt).then(function () { toast("Конспект скопирован"); }, function () { toast("Не получилось скопировать"); }); } catch (err) { toast("Не получилось скопировать"); }
+    return;
+  }
+  if (a === "subject" && shownNote) {
+    var subs = allSubjects();
+    $("nExtra").innerHTML = '<div class="card" style="display:grid;gap:10px"><b>Предмет</b><div class="chips" style="flex-wrap:wrap">' + subs.map(function (s) { return '<button class="chip" type="button" data-act="setsubj" data-s="' + esc(s) + '" aria-pressed="' + (s === shownNote.subject) + '">' + esc(s) + "</button>"; }).join("") +
+      '</div><form class="row" id="subjForm"><input class="input grow" id="subjIn" placeholder="Другой предмет" value=""><button class="btn slim primary" type="submit">OK</button></form></div>';
+    return;
+  }
+  if (a === "setsubj" && shownNote) { shownNote.subject = el.getAttribute("data-s"); save("notes", S.notes); showNote(shownNote); render(); return; }
+  if (a === "delnote" && shownNote) {
+    if (el.getAttribute("data-sure") !== "1") { el.setAttribute("data-sure", "1"); el.textContent = "Точно удалить?"; return; }
+    S.notes = S.notes.filter(function (n) { return n !== shownNote; }); save("notes", S.notes); syncReminders(); closeSheet("noteSheet"); shownNote = null; render(); toast("Конспект удалён"); return;
+  }
+});
+document.addEventListener("change", function (e) {
+  var id = e.target.getAttribute && e.target.getAttribute("data-done");
+  if (!id) return;
+  var n = S.notes.find(function (x) { return x.id === id; }); if (!n) return;
+  n.done = e.target.checked; save("notes", S.notes); syncReminders(); render();
+  if (!$("noteSheet").hidden && shownNote === n) showNote(n);
+});
+document.addEventListener("submit", function (e) {
+  if (e.target.id !== "subjForm") return;
+  e.preventDefault();
+  var v = $("subjIn").value.trim(); if (!v || !shownNote) return;
+  shownNote.subject = v; save("notes", S.notes); showNote(shownNote); render();
+});
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  ["settings", "noteSheet", "viewer"].some(function (id) { if (!$(id).hidden) { closeSheet(id); if (id === "viewer") current = null; return true; } });
+});
+window.addEventListener("popstate", function () {});
+window.dzBack = function () {
+  var open = ["settings", "noteSheet", "viewer"].filter(function (id) { return !$(id).hidden; });
+  if (!open.length) return false;
+  closeSheet(open[0]); if (open[0] === "viewer") current = null; render(); return true;
+};
+document.addEventListener("visibilitychange", function () { if (!document.hidden) listFiles(); });
+
+/* ================= start ================= */
+render();
+listFiles();
+loadSubjects();
+syncReminders();
+</script>
+</body>
+</html>

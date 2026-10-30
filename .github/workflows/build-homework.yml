@@ -1,0 +1,82 @@
+name: Build KNN domashka
+on:
+  push:
+    branches: [main]
+    paths: ["homework/**", ".github/workflows/build-homework.yml"]
+  workflow_dispatch:
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Build APK
+        working-directory: homework/android
+        run: |
+          set -o pipefail
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          gradle --no-daemon :app:assembleDebug 2>&1 | tee build.log
+      - name: Save build log on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/log && tail -200 homework/android/build.log > /tmp/log/build.log && cd /tmp/log
+          git init -q -b dz-build-log && git add build.log
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "android log $GITHUB_SHA"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" dz-build-log
+      - name: Publish APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp homework/android/app/build/outputs/apk/debug/app-debug.apk KNN-domashka.apk
+          gh release view latest >/dev/null 2>&1 || gh release create latest --target "$GITHUB_SHA" --title "КНН пары" --notes "Свежие сборки" --prerelease
+          gh release upload latest KNN-domashka.apk --clobber
+          mkdir -p /tmp/out && cp KNN-domashka.apk /tmp/out/ && cd /tmp/out
+          git init -q -b dz-apk && git add KNN-domashka.apk
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "KNN domashka APK $GITHUB_SHA"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" dz-apk
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet publish homework/windows/KNNDomashka.csproj -c Release -o out 2>&1 | tee build.log
+      - name: Save build log on failure
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/log" && tail -200 build.log > "$RUNNER_TEMP/log/build.log" && cd "$RUNNER_TEMP/log"
+          git init -q -b dz-build-log-win && git add build.log
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "windows log $GITHUB_SHA"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" dz-build-log-win
+      - name: Publish EXE
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp out/KNN-domashka.exe KNN-domashka.exe
+          gh release view latest >/dev/null 2>&1 || gh release create latest --target "$GITHUB_SHA" --title "КНН пары" --notes "Свежие сборки" --prerelease
+          gh release upload latest KNN-domashka.exe --clobber
+          mkdir -p "$RUNNER_TEMP/out" && cp KNN-domashka.exe "$RUNNER_TEMP/out/" && cd "$RUNNER_TEMP/out"
+          git init -q -b dz-exe && git add KNN-domashka.exe
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "KNN domashka EXE $GITHUB_SHA"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" dz-exe
