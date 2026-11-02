@@ -37,13 +37,38 @@ public class Shared {
   }
 
   /** The newest published file: by commit (no CDN delay), or by branch when GitHub limits requests. */
-  static String download() throws java.io.IOException {
+  static String ref() {
     try {
       String sha = get("https://api.github.com/repos/" + REPO + "/commits/data", "application/vnd.github.sha").trim();
-      if (!sha.matches("[0-9a-f]{40}")) throw new java.io.IOException("bad sha");
-      return get("https://raw.githubusercontent.com/" + REPO + "/" + sha + "/schedule.json", null);
-    } catch (java.io.IOException e) {
-      return get(SOURCE + "?t=" + System.currentTimeMillis(), null);
+      if (sha.matches("[0-9a-f]{40}")) return sha;
+    } catch (java.io.IOException ignored) {}
+    return null;
+  }
+
+  static String file(String ref, String name) throws java.io.IOException {
+    return get("https://raw.githubusercontent.com/" + REPO + "/" + (ref != null ? ref : "data") + "/" + name + (ref == null ? "?t=" + System.currentTimeMillis() : ""), null);
+  }
+
+  static String lastRef;
+
+  static String download() throws java.io.IOException {
+    lastRef = ref();
+    try { return file(lastRef, "schedule.json"); }
+    catch (java.io.IOException e) { if (lastRef == null) throw e; lastRef = null; return file(null, "schedule.json"); }
+  }
+
+  /** Teacher links the admin published. Returns true when they changed. */
+  static boolean syncTeachers(Context c) {
+    try {
+      JSONObject root = new JSONObject(file(lastRef, "teachers.json"));
+      org.json.JSONArray list = root.optJSONArray("teachers");
+      String now = list == null ? "[]" : list.toString();
+      android.content.SharedPreferences p = c.getSharedPreferences(MainActivity.PREFS, 0);
+      if (now.equals(p.getString("extra_teachers", "[]"))) return false;
+      p.edit().putString("extra_teachers", now).apply();
+      return true;
+    } catch (Exception e) {
+      return false;
     }
   }
 
@@ -58,6 +83,7 @@ public class Shared {
       p.edit().putBoolean("shared_ok", false).putLong("shared_checked", System.currentTimeMillis()).apply();
       return -1;
     }
+    boolean teachersChanged = syncTeachers(c);
     synchronized (LOCK) {
       try {
         JSONObject root = new JSONObject(text);
@@ -77,7 +103,10 @@ public class Shared {
         out.addAll(incoming);
         out.sort((a, b) -> Long.compare(MainActivity.dayKey(b.date), MainActivity.dayKey(a.date)));
         while (out.size() > 20) out.remove(out.size() - 1);
-        if (MainActivity.sheetsJson(onlyShared(out)).toString().equals(before)) return 0;
+        if (MainActivity.sheetsJson(onlyShared(out)).toString().equals(before)) {
+          if (teachersChanged) { Reminders.schedule(c); return 1; }
+          return 0;
+        }
         MainActivity.writeSheets(c, out);
         Reminders.schedule(c);
         return 1;

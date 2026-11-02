@@ -79,6 +79,7 @@ public class MainActivity extends Activity {
       runOnUiThread(() -> {
         sharedBusy = false;
         if (r == 1) {
+          loadTeachers();
           loadSheets();
           selectedDate = null;
           Toast.makeText(this, "Расписание обновлено", Toast.LENGTH_SHORT).show();
@@ -114,13 +115,46 @@ public class MainActivity extends Activity {
 
   // ---------- data ----------
   void loadTeachers() {
-    try (BufferedReader r = new BufferedReader(new InputStreamReader(getAssets().open("teachers.tsv"), StandardCharsets.UTF_8))) {
+    teachers.clear(); bySurname.clear(); nameByUrl.clear();
+    for (String[] p : allTeachers(this)) {
+      teachers.add(p);
+      bySurname.computeIfAbsent(norm(p[0].split(" ")[0]), k -> new ArrayList<>()).add(p);
+      String prev = nameByUrl.get(p[1]); nameByUrl.put(p[1], prev == null ? p[0] : prev + " / " + p[0]);
+    }
+  }
+
+  static String tkey(String s) { return norm(s.trim().replaceAll("\\s+", " ")); }
+
+  /** Built-in teachers plus the links the admin published (same name replaces the built-in link). */
+  static ArrayList<String[]> allTeachers(Context ctx) {
+    ArrayList<String[]> out = new ArrayList<>();
+    try (BufferedReader r = new BufferedReader(new InputStreamReader(ctx.getAssets().open("teachers.tsv"), StandardCharsets.UTF_8))) {
       String line;
-      while ((line = r.readLine()) != null) {
-        String[] p = line.split("\t");
-        if (p.length == 2) { teachers.add(p); bySurname.computeIfAbsent(norm(p[0].split(" ")[0]), k -> new ArrayList<>()).add(p); String prev = nameByUrl.get(p[1]); nameByUrl.put(p[1], prev == null ? p[0] : prev + " / " + p[0]); }
-      }
+      while ((line = r.readLine()) != null) { String[] p = line.split("\t"); if (p.length == 2) out.add(p); }
     } catch (IOException ignored) {}
+    try {
+      JSONArray extra = new JSONArray(ctx.getSharedPreferences(PREFS, 0).getString("extra_teachers", "[]"));
+      for (int i = 0; i < extra.length(); i++) {
+        JSONArray e = extra.optJSONArray(i);
+        if (e == null || e.length() < 2) continue;
+        String name = e.optString(0).trim().replaceAll("\\s+", " "), url = e.optString(1).trim();
+        if (name.isEmpty() || !url.startsWith("https://")) continue;
+        String sur = norm(name.split(" ")[0]);
+        boolean single = !name.contains(" ");
+        int idx = -1;
+        for (int k = 0; k < out.size() && idx < 0; k++) if (tkey(out.get(k)[0]).equals(tkey(name))) idx = k;
+        if (idx < 0 && !single) for (int k = 0; k < out.size() && idx < 0; k++) if (!out.get(k)[0].trim().contains(" ") && tkey(out.get(k)[0]).equals(sur)) idx = k;
+        if (idx < 0 && single) {
+          int found = -1, n = 0;
+          for (int k = 0; k < out.size(); k++) if (norm(out.get(k)[0].split(" ")[0]).equals(sur)) { found = k; n++; }
+          if (n == 1) idx = found;
+        }
+        if (idx >= 0) out.set(idx, new String[]{single ? out.get(idx)[0] : name, url});
+        else out.add(new String[]{name, url});
+      }
+    } catch (JSONException ignored) {}
+    out.sort((a, b) -> a[0].replace('ё', 'е').compareTo(b[0].replace('ё', 'е')));
+    return out;
   }
 
   void loadFavs() { favs.clear(); favs.addAll(getSharedPreferences(PREFS, 0).getStringSet(FAV, new HashSet<>())); }
@@ -797,13 +831,7 @@ public class MainActivity extends Activity {
 
   static HashMap<String, ArrayList<String[]>> surnameMap(Context ctx) {
     HashMap<String, ArrayList<String[]>> m = new HashMap<>();
-    try (BufferedReader r = new BufferedReader(new InputStreamReader(ctx.getAssets().open("teachers.tsv"), StandardCharsets.UTF_8))) {
-      String line;
-      while ((line = r.readLine()) != null) {
-        String[] p = line.split("\t");
-        if (p.length == 2) m.computeIfAbsent(norm(p[0].split(" ")[0]), k -> new ArrayList<>()).add(p);
-      }
-    } catch (IOException ignored) {}
+    for (String[] p : allTeachers(ctx)) m.computeIfAbsent(norm(p[0].split(" ")[0]), k -> new ArrayList<>()).add(p);
     return m;
   }
 

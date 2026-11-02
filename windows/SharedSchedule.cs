@@ -31,12 +31,38 @@ static class SharedSchedule
             res.EnsureSuccessStatusCode();
             string sha = (await res.Content.ReadAsStringAsync()).Trim();
             if (!Regex.IsMatch(sha, "^[0-9a-f]{40}$")) throw new Exception("bad sha");
-            return await Http.GetStringAsync("https://raw.githubusercontent.com/" + Repo + "/" + sha + "/schedule.json");
+            string text = await Http.GetStringAsync("https://raw.githubusercontent.com/" + Repo + "/" + sha + "/schedule.json");
+            lastRef = sha;
+            return text;
         }
         catch
         {
+            lastRef = null;
             return await Http.GetStringAsync(Source + "?t=" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         }
+    }
+
+    static string lastRef;
+    static string ExtraPath => Path.Combine(Program.Home, "teachers-extra.json");
+
+    /// <summary>Teacher links the admin published. Returns true when they changed.</summary>
+    static async Task<bool> DownloadTeachers()
+    {
+        try
+        {
+            string url = "https://raw.githubusercontent.com/" + Repo + "/" + (lastRef ?? "data") + "/teachers.json" + (lastRef == null ? "?t=" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() : "");
+            using var res = await Http.GetAsync(url);
+            if (!res.IsSuccessStatusCode) return false;
+            using var d = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+            string list = d.RootElement.TryGetProperty("teachers", out var t) ? t.GetRawText() : "[]";
+            string old = File.Exists(ExtraPath) ? await File.ReadAllTextAsync(ExtraPath) : "[]";
+            if (old == list) return false;
+            await File.WriteAllTextAsync(ExtraPath, list);
+            teachers = null;
+            Program.Log("teacher links updated");
+            return true;
+        }
+        catch (Exception e) { Program.Log("teacher links: " + e.Message); return false; }
     }
 
     public static DateTime LastCheck = DateTime.MinValue;
@@ -52,8 +78,9 @@ static class SharedSchedule
             string text = await Fetch();
             using (JsonDocument.Parse(text)) { }
             LastCheck = DateTime.Now; LastOk = true;
+            bool teachersChanged = await DownloadTeachers();
             string old = File.Exists(CachePath) ? await File.ReadAllTextAsync(CachePath) : "";
-            if (old == text) return false;
+            if (old == text) return teachersChanged;
             await File.WriteAllTextAsync(CachePath, text);
             Program.Log("shared schedule updated");
             return true;
@@ -138,6 +165,36 @@ static class SharedSchedule
 
     static string Key(string s) => s.ToLowerInvariant().Replace('ё', 'е');
 
+    static string Full(string s) => Key(Regex.Replace(s.Trim(), @"\s+", " "));
+
+    /// <summary>Same rule as the apps: same name replaces; a full name replaces a surname-only entry; a surname changes the only teacher with it.</summary>
+    static void MergeExtra(List<string[]> list)
+    {
+        try
+        {
+            if (!File.Exists(ExtraPath)) return;
+            using var d = JsonDocument.Parse(File.ReadAllText(ExtraPath));
+            foreach (var e in d.RootElement.EnumerateArray())
+            {
+                if (e.ValueKind != JsonValueKind.Array || e.GetArrayLength() < 2) continue;
+                string name = Regex.Replace((e[0].GetString() ?? "").Trim(), @"\s+", " "), url = (e[1].GetString() ?? "").Trim();
+                if (name.Length == 0 || !url.StartsWith("https://")) continue;
+                string sur = Key(name.Split(' ')[0]);
+                bool single = !name.Contains(' ');
+                int idx = list.FindIndex(t => Full(t[0]) == Full(name));
+                if (idx < 0 && !single) idx = list.FindIndex(t => !t[0].Trim().Contains(' ') && Full(t[0]) == sur);
+                if (idx < 0 && single)
+                {
+                    var same = list.Where(t => Key(t[0].Split(' ')[0]) == sur).ToList();
+                    if (same.Count == 1) idx = list.IndexOf(same[0]);
+                }
+                if (idx >= 0) list[idx] = new[] { single ? list[idx][0] : name, url };
+                else list.Add(new[] { name, url });
+            }
+        }
+        catch (Exception ex) { Program.Log("merge teachers: " + ex.Message); }
+    }
+
     static List<string[]> Lookup(string written)
     {
         if (teachers == null)
@@ -151,6 +208,7 @@ static class SharedSchedule
                 var p = line.Split('\t');
                 if (p.Length == 2) teachers.Add(p);
             }
+            MergeExtra(teachers);
         }
         var w = written.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         if (w.Length == 0) return new List<string[]>();
