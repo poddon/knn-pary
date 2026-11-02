@@ -784,7 +784,19 @@ $("publish").onclick = function () {
     $("listNote").textContent = "Опубликовано: " + new Date().toLocaleString("ru-RU") + ". Приложения забирают обновления в течение 15–30 минут.";
     render(); toast("Опубликовано для всех");
   }).catch(function (e) {
-    toast("Не удалось опубликовать: " + e.message + (e.status === 401 || e.status === 403 ? ". Проверь ключ доступа." : ""));
+    var m = $("pdfMsg"); m.hidden = false;
+    if (e.status === 403 || e.status === 404 || /not accessible/i.test(e.message)) {
+      m.className = "msg bad";
+      m.innerHTML = "<b>Ключ GitHub больше не может записывать в " + REPO + ".</b><br>Скорее всего, в настройках ключа выбран другой репозиторий или снято право записи. Исправить, не создавая новый ключ:" +
+        '<ol class="steps" style="margin-top:6px"><li>Открой <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a> и выбери свой ключ.</li>' +
+        "<li>Repository access → Only select repositories → добавь <code>knn-pary</code> (другие репозитории можно оставить).</li>" +
+        "<li>Repository permissions → <b>Contents: Read and write</b>.</li><li>Нажми «Update» и снова «Опубликовать для всех». Изменения не потерялись.</li></ol>";
+      m.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else if (e.status === 401) {
+      m.className = "msg bad"; m.textContent = "Ключ GitHub недействителен или истёк. Нажми «Отключить» вверху и вставь новый ключ (Contents: Read and write для knn-pary). Изменения не потерялись.";
+    } else {
+      toast("Не удалось опубликовать: " + e.message);
+    }
   }).then(function () { btn.textContent = "Опубликовать для всех"; renderBar(); });
 };
 
