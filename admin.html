@@ -97,6 +97,14 @@ td.n { width: 54px; } td.t { width: 130px; } td.x { width: 36px; }
     <div id="pdfMsg" hidden></div>
   </section>
 
+  <section class="card" id="tSection">
+    <div class="row"><h2 class="grow">Преподаватели и ссылки</h2><button class="btn small" type="button" id="addTeacher">+ Преподаватель</button></div>
+    <p class="muted" style="margin:0">Свои ссылки на ВКС. Если ФИО совпадает с преподавателем из встроенного списка, его ссылка заменится. Опубликуй, и ссылки появятся у всех.</p>
+    <input class="f" id="tSearch" type="search" placeholder="Найти преподавателя, чтобы поменять ссылку" autocomplete="off">
+    <div id="tFound" style="display:grid;gap:6px"></div>
+    <div id="tList" style="display:grid;gap:8px"></div>
+  </section>
+
   <section class="card">
     <div class="row"><h2 class="grow">Дни расписания</h2><button class="btn small" type="button" id="addDay">+ День вручную</button></div>
     <p class="muted" id="listNote">Загружаю опубликованное расписание…</p>
@@ -507,8 +515,12 @@ function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 function toast(m) { var t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 4000); }
 
-var known = {};
-TEACHERS.forEach(function (t) { known[t[0].split(" ")[0]] = 1; });
+var known = {}, extra = [], extraPub = "[]", tSha = null, TFILE = "teachers.json";
+function rebuildKnown() {
+  known = {};
+  TEACHERS.concat(extra).forEach(function (t) { if (t[0]) known[String(t[0]).trim().split(/\s+/)[0]] = 1; });
+}
+rebuildKnown();
 function knownSurname(w) { var s = w.trim().split(/\s+/)[0]; return !!known[s] || !!known[s.replace(/е/g, "ё")] || Object.keys(known).some(function (k) { return k.replace(/ё/g, "е") === s.replace(/ё/g, "е"); }); }
 
 var token = ls("token") || "", login = "", sha = null;
@@ -571,7 +583,71 @@ function connect(fromForm) {
   });
 }
 
+function loadTeachers() {
+  var p = token && login
+    ? gh("/repos/" + REPO + "/contents/" + TFILE + "?ref=" + BRANCH).then(function (r) { tSha = r.sha; return JSON.parse(b64decode(r.content)); }, function (e) { if (e.status === 404) { tSha = null; return { teachers: [] }; } throw e; })
+    : fetch("https://raw.githubusercontent.com/" + REPO + "/" + BRANCH + "/" + TFILE + "?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : { teachers: [] }; });
+  p.then(function (d) {
+    var pub = (d && d.teachers || []).filter(function (t) { return t && t[0]; });
+    extraPub = JSON.stringify(pub);
+    var draft = null; try { draft = JSON.parse(ls("tdraft") || "null"); } catch (e) {}
+    extra = draft && JSON.stringify(draft) !== extraPub ? draft : pub;
+    rebuildKnown(); renderTeachers(); render();
+  }).catch(function () { renderTeachers(); });
+}
+function teachersDirty() { return JSON.stringify(extra.filter(function (t) { return t[0] || t[1]; })) !== extraPub; }
+function saveTDraft() { ls("tdraft", JSON.stringify(extra)); rebuildKnown(); renderBar(); }
+function tKey(n) { return String(n).toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim(); }
+function builtinUrl(name) { var t = TEACHERS.find(function (x) { return tKey(x[0]) === tKey(name); }); return t ? t[1] : ""; }
+
+function renderTeachers() {
+  var box = $("tList");
+  if (!extra.length) { box.innerHTML = '<p class="muted" style="margin:0">Своих ссылок пока нет.</p>'; return; }
+  box.innerHTML = extra.map(function (t, i) {
+    var bu = builtinUrl(t[0]), bad = t[1] && !/^https:\/\/\S+$/.test(t[1]);
+    return '<div class="col"><div class="row"><label class="lab grow">ФИО (как в расписании, можно только фамилию)<input class="f" data-t="' + i + '" data-tk="0" value="' + esc(t[0]) + '" placeholder="Нигматуллин Ильдар Рустамович"></label>' +
+      '<button class="btn small danger" type="button" data-tdel="' + i + '" style="align-self:end">Удалить</button></div>' +
+      '<label class="lab">Ссылка на комнату ВКС<input class="f" data-t="' + i + '" data-tk="1" value="' + esc(t[1]) + '" placeholder="https://vks.knn-nk.ru/rooms/…/join" inputmode="url"></label>' +
+      '<div class="tw" id="tn-' + i + '">' + (bad ? "Ссылка должна начинаться с https://" : bu ? (bu === t[1] ? "Совпадает со встроенной ссылкой." : "Заменит встроенную ссылку.") : "") + "</div></div>";
+  }).join("");
+}
+function addTeacherRow(name, url) {
+  var i = extra.findIndex(function (t) { return tKey(t[0]) === tKey(name || "") && name; });
+  if (i < 0) { extra.unshift([name || "", url || ""]); i = 0; }
+  saveTDraft(); renderTeachers();
+  var el = document.querySelector('[data-t="' + i + '"][data-tk="' + (name ? 1 : 0) + '"]');
+  if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.focus(); }
+}
+$("addTeacher").onclick = function () { addTeacherRow("", ""); };
+$("tList").addEventListener("input", function (e) {
+  var el = e.target, i = el.getAttribute("data-t"); if (i == null) return;
+  extra[+i][+el.getAttribute("data-tk")] = el.getAttribute("data-tk") === "1" ? el.value.trim() : el.value.replace(/\s+/g, " ").replace(/^\s/, "");
+  var t = extra[+i], bu = builtinUrl(t[0]), n = $("tn-" + i);
+  if (n) n.textContent = t[1] && !/^https:\/\/\S+$/.test(t[1]) ? "Ссылка должна начинаться с https://" : bu ? (bu === t[1] ? "Совпадает со встроенной ссылкой." : "Заменит встроенную ссылку.") : "";
+  saveTDraft();
+});
+$("tList").addEventListener("click", function (e) {
+  var b = e.target.closest("[data-tdel]"); if (!b) return;
+  extra.splice(+b.getAttribute("data-tdel"), 1); saveTDraft(); renderTeachers(); render();
+});
+$("tSearch").addEventListener("input", function () {
+  var q = tKey(this.value), box = $("tFound");
+  if (q.length < 2) { box.innerHTML = ""; return; }
+  var all = TEACHERS.map(function (t) { var c = extra.find(function (x) { return tKey(x[0]) === tKey(t[0]); }); return [t[0], c ? c[1] : t[1], !!c]; });
+  extra.forEach(function (x) { if (x[0] && !TEACHERS.some(function (t) { return tKey(t[0]) === tKey(x[0]); })) all.push([x[0], x[1], true]); });
+  var hits = all.filter(function (t) { return tKey(t[0]).indexOf(q) >= 0; }).slice(0, 8);
+  box.innerHTML = hits.length ? hits.map(function (t) {
+    return '<div class="row" style="border:1px solid var(--line);border-radius:12px;padding:8px 10px"><div class="grow"><b>' + esc(t[0]) + '</b><div class="muted" style="font-size:12.5px;word-break:break-all">' + esc(t[1] || "нет ссылки") + (t[2] ? " · своя" : "") + "</div></div>" +
+      '<button class="btn small" type="button" data-tedit="' + esc(t[0]) + '" data-turl="' + esc(t[1]) + '">Изменить ссылку</button></div>';
+  }).join("") : '<div class="row"><span class="muted grow">Не нашёл «' + esc(this.value.trim()) + '».</span><button class="btn small" type="button" data-tedit="' + esc(this.value.trim()) + '" data-turl="">Добавить</button></div>';
+});
+$("tFound").addEventListener("click", function (e) {
+  var b = e.target.closest("[data-tedit]"); if (!b) return;
+  addTeacherRow(b.getAttribute("data-tedit"), b.getAttribute("data-turl")); $("tSearch").value = ""; $("tFound").innerHTML = "";
+});
+
 function loadPublished() {
+  loadTeachers();
   var p = token && login
     ? gh("/repos/" + REPO + "/contents/" + FILE + "?ref=" + BRANCH).then(function (r) { sha = r.sha; return JSON.parse(b64decode(r.content)); })
     : fetch(RAW + "?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); });
@@ -651,7 +727,7 @@ function addSheet(sh) {
 function pairsOf(sh) { var n = 0; sh.columns.forEach(function (c) { n += c.lessons.length; }); return n; }
 function sortDays() { days.sort(function (a, b) { return dayKey(b.sheet.date) - dayKey(a.sheet.date); }); }
 function saveDraft() { ls("draft", JSON.stringify(days)); renderBar(); }
-function changes() { return days.filter(function (d) { return d.state !== "pub"; }).length + removed; }
+function changes() { return days.filter(function (d) { return d.state !== "pub"; }).length + removed + (teachersDirty() ? 1 : 0); }
 
 function renderBar() {
   var n = changes();
@@ -701,7 +777,7 @@ function editor(sh, i) {
 
 function teacherWarn(list) {
   var bad = list.filter(function (t) { return t.trim() && !knownSurname(t); });
-  return bad.length ? "Нет в списке преподавателей, кнопки входа не будет: " + esc(bad.join(", ")) : "";
+  return bad.length ? "Нет в списке преподавателей, кнопки входа не будет: " + esc(bad.join(", ")) + bad.map(function (b) { return ' <button class="btn small" type="button" data-addt="' + esc(b.trim()) + '">+ ссылка для ' + esc(b.trim().split(/\s+/)[0]) + "</button>"; }).join("") : "";
 }
 
 function touch(i) { if (days[i].state === "pub") days[i].state = "chg"; saveDraft(); }
@@ -729,6 +805,8 @@ $("days").addEventListener("change", function (e) {
   if (el.getAttribute("data-k") === "date") render();
 });
 $("days").addEventListener("click", function (e) {
+  var at = e.target.closest("[data-addt]");
+  if (at) { addTeacherRow(at.getAttribute("data-addt"), ""); return; }
   var b = e.target.closest("[data-act]"); if (!b) return;
   var act = b.getAttribute("data-act"), i = +b.getAttribute("data-i"), ci = +b.getAttribute("data-c"), li = +b.getAttribute("data-l");
   if (act === "toggle") { days[i].open = !days[i].open; render(); return; }
@@ -768,20 +846,40 @@ $("publish").onclick = function () {
     if (!parseDate(d.sheet.date)) problems.push("у одного из дней не указана дата");
     d.sheet.columns.forEach(function (c) { c.lessons.forEach(function (l) { if ((l.subject || l.teachers.length) && !/^\d{2}:\d{2}–\d{2}:\d{2}$/.test(normTime(l.time))) problems.push(d.sheet.date + ", " + (c.groups.join(",") || "без группы") + ": у пары " + l.num + " нет времени"); }); });
   });
+  extra.forEach(function (t) {
+    if (!t[0] && !t[1]) return;
+    if (!t[0].trim()) problems.push("у одной из ссылок не указано ФИО преподавателя");
+    else if (!/^https:\/\/\S+$/.test(t[1])) problems.push("ссылка для «" + t[0].trim() + "» должна начинаться с https://");
+  });
   if (problems.length) { toast("Исправь: " + problems[0]); return; }
+  var schedDirty = days.some(function (d) { return d.state !== "pub"; }) || removed > 0, tDirty = teachersDirty();
   var limit = dayKey(fmtDate(new Date(Date.now() - 21 * 86400000)));
   var sheets = days.map(function (d) { return clean(d.sheet); }).filter(function (s) { return dayKey(s.date) >= limit; }).sort(function (a, b) { return dayKey(b.date) - dayKey(a.date); });
-  var body = JSON.stringify({ updated: new Date().toISOString(), sheets: sheets }, null, 1);
   var names = days.filter(function (d) { return d.state !== "pub"; }).map(function (d) { return d.sheet.date; }).join(", ");
+  var tlist = extra.filter(function (t) { return t[0] || t[1]; }).map(function (t) { return [t[0].replace(/\s+/g, " ").trim(), t[1].trim()]; });
   var btn = $("publish"); btn.disabled = true; btn.textContent = "Публикую…";
-  gh("/repos/" + REPO + "/contents/" + FILE + "?ref=" + BRANCH).then(function (r) { sha = r.sha; }).then(function () {
-    return gh("/repos/" + REPO + "/contents/" + FILE, { method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "Расписание" + (names ? ": " + names : ""), content: b64encode(body), branch: BRANCH, sha: sha }) });
-  }).then(function (r) {
-    sha = r.content.sha;
-    days = sheets.map(function (s) { return { sheet: s, state: "pub", open: false }; }); removed = 0;
-    ls("draft", null);
-    $("listNote").textContent = "Опубликовано: " + new Date().toLocaleString("ru-RU") + ". Приложения забирают обновления в течение 15–30 минут.";
+  var chain = Promise.resolve();
+  if (schedDirty) chain = chain.then(function () {
+    var body = JSON.stringify({ updated: new Date().toISOString(), sheets: sheets }, null, 1);
+    return gh("/repos/" + REPO + "/contents/" + FILE + "?ref=" + BRANCH).then(function (r) { sha = r.sha; }).then(function () {
+      return gh("/repos/" + REPO + "/contents/" + FILE, { method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "Расписание" + (names ? ": " + names : ""), content: b64encode(body), branch: BRANCH, sha: sha }) });
+    }).then(function (r) {
+      sha = r.content.sha;
+      days = sheets.map(function (s) { return { sheet: s, state: "pub", open: false }; }); removed = 0;
+      ls("draft", null);
+      $("listNote").textContent = "Опубликовано: " + new Date().toLocaleString("ru-RU") + ". Приложения забирают обновления в течение 15–30 минут.";
+    });
+  });
+  if (tDirty) chain = chain.then(function () {
+    var body = JSON.stringify({ updated: new Date().toISOString(), teachers: tlist }, null, 1);
+    return gh("/repos/" + REPO + "/contents/" + TFILE + "?ref=" + BRANCH).then(function (r) { tSha = r.sha; }, function (e) { if (e.status === 404) tSha = null; else throw e; }).then(function () {
+      var req = { message: "Ссылки преподавателей", content: b64encode(body), branch: BRANCH };
+      if (tSha) req.sha = tSha;
+      return gh("/repos/" + REPO + "/contents/" + TFILE, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(req) });
+    }).then(function (r) { tSha = r.content.sha; extra = tlist; extraPub = JSON.stringify(tlist); ls("tdraft", null); rebuildKnown(); renderTeachers(); });
+  });
+  chain.then(function () {
     render(); toast("Опубликовано для всех");
   }).catch(function (e) {
     var m = $("pdfMsg"); m.hidden = false;

@@ -545,13 +545,32 @@ function native(msg) {
 
 var state = { auto: load("auto", true), tab: "s", fio: load("fio", ""), group: load("group", ""), sheets: load("sheets", []), favs: load("favs", []), q: "", loading: false, day: null, problem: null, lastLoaded: [] };
 
-var bySurname = {}, known = {};
-TEACHERS.forEach(function (t) {
-  var s = t[0].split(" ")[0];
-  known[s] = 1;
-  var k = s.toLowerCase().replace(/ё/g, "е");
-  (bySurname[k] = bySurname[k] || []).push(t);
-});
+/* Built-in teachers plus links the admin published (same name replaces the built-in link). */
+var BASE_TEACHERS = TEACHERS, bySurname = {}, known = {};
+function teacherKey(n) { return String(n).toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim(); }
+function mergeTeachers(base, extra) {
+  var out = base.map(function (t) { return [t[0], t[1]]; });
+  (extra || []).forEach(function (e) {
+    if (!e || !e[0] || !/^https:\/\//.test(e[1] || "")) return;
+    var name = String(e[0]).replace(/\s+/g, " ").trim(), sur = teacherKey(name.split(" ")[0]), single = name.indexOf(" ") < 0;
+    var i = out.findIndex(function (t) { return teacherKey(t[0]) === teacherKey(name); });
+    if (i < 0 && !single) i = out.findIndex(function (t) { return t[0].trim().indexOf(" ") < 0 && teacherKey(t[0]) === sur; });
+    if (i < 0 && single) { var same = out.filter(function (t) { return teacherKey(t[0].split(" ")[0]) === sur; }); if (same.length === 1) i = out.indexOf(same[0]); }
+    if (i >= 0) { if (!single) out[i][0] = name; out[i][1] = e[1]; } else out.push([name, e[1]]);
+  });
+  return out.sort(function (a, b) { return a[0].localeCompare(b[0], "ru"); });
+}
+function rebuildTeachers() {
+  TEACHERS = mergeTeachers(BASE_TEACHERS, load("extraTeachers", []));
+  bySurname = {}; known = {};
+  TEACHERS.forEach(function (t) {
+    var s = t[0].split(" ")[0];
+    known[s] = 1;
+    var k = s.toLowerCase().replace(/ё/g, "е");
+    (bySurname[k] = bySurname[k] || []).push(t);
+  });
+}
+rebuildTeachers();
 
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -942,12 +961,25 @@ var SHARED_REPO = "poddon/knn-pary", sharedBusy = false, sharedInfo = load("shar
 
 /* The newest published file: by commit (no CDN delay), or by branch when GitHub limits requests. */
 function sharedFetch() {
+  function raw(ref, file) { return fetch("https://raw.githubusercontent.com/" + SHARED_REPO + "/" + ref + "/" + file + (ref === "data" ? "?t=" + Date.now() : ""), { cache: "no-store" }); }
   return fetch("https://api.github.com/repos/" + SHARED_REPO + "/commits/data", { headers: { Accept: "application/vnd.github.sha" }, cache: "no-store" })
     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
-    .then(function (sha) { sha = sha.trim(); if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error("sha"); return fetch("https://raw.githubusercontent.com/" + SHARED_REPO + "/" + sha + "/schedule.json"); })
-    .then(function (r) { if (!r.ok) throw new Error(r.status); return r; })
-    .catch(function () { return fetch(SHARED_URL + "?t=" + Date.now(), { cache: "no-store" }); })
-    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+    .then(function (sha) { sha = sha.trim(); if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error("sha"); return sha; })
+    .catch(function () { return "data"; })
+    .then(function (ref) {
+      return Promise.all([
+        raw(ref, "schedule.json").then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }),
+        raw(ref, "teachers.json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      ]);
+    })
+    .then(function (r) {
+      var data = r[0];
+      if (r[1] && Array.isArray(r[1].teachers)) {
+        var before = JSON.stringify(load("extraTeachers", []));
+        if (JSON.stringify(r[1].teachers) !== before) { save("extraTeachers", r[1].teachers); rebuildTeachers(); data.__teachersChanged = true; }
+      }
+      return data;
+    });
 }
 
 /* mode: "quiet" on start, "auto" on timers, "manual" from the button */
@@ -962,6 +994,7 @@ function syncShared(mode) {
     var local = state.sheets.filter(function (s) { return !s.shared && !incoming.some(function (n) { return sameSheet(n, s); }); });
     state.sheets = local.concat(incoming).sort(function (a, b) { return dayKey(b.date) - dayKey(a.date); }).slice(0, 20);
     if (JSON.stringify(state.sheets.filter(function (s) { return s.shared; })) === before) {
+      if (data.__teachersChanged) { if (mode !== "quiet") toast("Ссылки преподавателей обновлены"); syncNative(); return; }
       if (mode === "manual") toast("Новых изменений нет, расписание актуально");
       return;
     }
